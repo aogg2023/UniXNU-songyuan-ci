@@ -514,3 +514,31 @@ ifeq ($(filter PANDORA SONGYUAN,$(CURRENT_MACHINE_CONFIG)),)
 2. 或在 QEMU 里让内核控制台走 PL011，这样 `serial.txt` 就能直接拿到 panic 文本
    （`sweet_early` 已有输出钩子，加一个 QEMU 目标即可）
 3. 栈回溯需要按段分别换算 PA（内核栈不在线性映射区），或直接用 gdbstub
+### 11.8 修复后的执行位置（2026-10-25 续）
+
+用 gdbstub 跟踪 `kprintf`，抓到内核实际打印的头两条：
+
+```
+vm_cache_geometry_colors: %d
+%s() - %u bytes %s cache (I:%u D:%u (%s)), %u-way assoc, %u bytes/line
+```
+
+说明内核已进入 **VM/缓存几何初始化**，随后 `panic()` → `halt_all_cpus(TRUE)`
+（`osfmk/kern/debug.c:1179`）。PC 采样显示 0.4 秒内就停住。
+
+**为什么屏幕看不到 panic 文本**：本机控制台走 SM8850 的 UART/显示路径，
+QEMU virt 里没有对应的 UART；帧缓冲控制台在 panic 前被显示驱动清屏。
+
+### 11.9 抓 panic 文本的三条路（按可靠性排序）
+
+1. **让 kprintf 同时写 PL011**（最稳）：加一个只在 `XNU_QEMU_SERIAL` 编译时生效的钩子，
+   把 kprintf 的输出写到 `0x09000000`。之后 QEMU 的 `serial.txt` 就是完整内核日志。
+   代价：一次 CI（现在约 5 分钟）+ 6 MB 下载（约 2 分钟）
+2. gdbstub 跟踪 kprintf：已能抓到前两条，但批量循环不稳定
+   （`commands`/Python 断点在连续命中时会失步）
+3. 真机抢拍：文字存在时间太短，且会被显示驱动清屏，不可靠
+
+### 11.10 当前状态一句话
+
+**内核已能在正确 MMU 配置下启动并进入 VM 初始化**，之后 panic；
+下一步是把内核日志接出来看 panic 原因。
