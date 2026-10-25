@@ -1,0 +1,24 @@
+--- a/bsd/kern/bsd_init.c
++++ b/bsd/kern/bsd_init.c
+@@ -888,9 +888,12 @@
+ 
+ 		bsd_init_kprintf("vfs_mountroot\n");
+ 		if (0 == (err = vfs_mountroot())) {
++			kprintf("SONGYUAN root: vfs_mountroot OK\n");
+ 			break;
+ 		}
+ 		rootdevice[0] = '\0';
++		kprintf("SONGYUAN root: vfs_mountroot FAILED err=%d rootdevice='%s'\n",
++		    err, rootdevice);
+ #if CONFIG_NETBOOT
+ 		if (netboot) {
+ 			PE_display_icon( 0, "noroot");  /* XXX a netboot-specific icon would be nicer */
+@@ -1140,6 +1143,8 @@
+ 	kern_return_t   err;
+ 
+ 	err = IOFindBSDRoot(rootdevice, sizeof(rootdevice), &rootdev, &flags);
++	kprintf("SONGYUAN root: IOFindBSDRoot err=%d flags=0x%x rootdev=0x%x name='%s'\n",
++	    err, flags, (unsigned)rootdev, rootdevice);
+ 	if (err) {
+ 		printf("setconf: IOFindBSDRoot returned an error (%d);"
+ 		    "setting rootdevice to 'sd0a'.\n", err);     /* XXX DEBUG TEMP */
