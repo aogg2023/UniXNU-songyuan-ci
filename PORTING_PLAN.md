@@ -856,3 +856,32 @@ X0 = 9                                           ← open("/dev/console") 的 fd
 **当前策略**：真机先用「不带 fbcon」的已知可用配置（`SONGYUAN_NO_FBCON=1`），
 确认能否跑到用户态；屏幕输出另找正确映射方式（候选：`ml_io_map` 而非
 `ml_io_map_wcomb`，或延后到 IOKit 完全就绪后再映射）。
+### 11.27 真机到达用户态（2026-10-25 20:50）★
+
+用「不带 fbcon」的配置在真机引导：**进度条在动，长时间不重启，无 panic**。
+说明与 QEMU 一致，链路完整走通：
+
+```
+loader → XNU → VM → IOKit → AMFI → KeyStore → 平台专家 → AppleCLCD
+→ bsd_init(34 步) → 挂载 HFS+ 根卷(md0) → exec /sbin/launchd → init 常驻
+```
+
+**已验证的配置**（真机 + QEMU 都通过）：
+
+| 项 | 值 |
+|---|---|
+| 内核 | kernel19/20/21 系列（含 0199 VA 布局、0200-0202 诊断、0206 控制台路由） |
+| ADT | `SONGYUAN_NO_FBCON=1`（**关键**：带 fbcon 会因 `ml_io_map_wcomb` 的坏地址引发栈溢出 panic） |
+| cmdline | `-v debug=0xc cpus=1 keepsyms=1 rd=md0` |
+| 根卷 | 128 MB 裸 HFS+（`hdiutil -layout NONE`），`/sbin/launchd` = 静态 Mach-O init |
+| init | 只带 `LC_UNIXTHREAD`（**绝不能加 LC_MAIN**），`open("/dev/console")` + write + 常驻 |
+
+**剩余三件事**（按价值排序）：
+
+1. **屏幕文本**：`ml_io_map_wcomb` 在真机返回不可写地址 → 改用 `ml_io_map`，
+   或把映射推迟到 IOKit 完全就绪之后，再恢复 fbcon（0205 已留好挂点）
+2. **真正的用户态**：需要 iOS 16 的 `launchd`/`dyld`/trust cache（IPSW，约 5 GB）
+3. **交互**：触摸/按键驱动（日志里 `SWEET HID` 已注册，但需要真正的 Goodix 驱动）
+
+**今天最重要的一条教训**：遇到问题先翻用户给的项目。`LC_MAIN` 那个坑
+就是靠对比 `oosexgang/hackios-xnu-userland` 的 `prebuilt/userland/hello` 才发现的。
