@@ -15,7 +15,7 @@
 -	fbcon_base = (volatile uint32_t *)ml_io_map_wcomb(reg[0], reg[1]);
 +	fbcon_pa = reg[0];
 +	fbcon_sz = reg[1];
-+	fbcon_base = NULL;   /* songyuan: pmap 未就绪，延迟到 bsd_init 前映射 */
++	fbcon_base = NULL;   /* songyuan: pmap 未就绪，延迟映射 */
  	sweet_early_mark(18, "fbcon mapping returned");
  #if defined(FUXI)
  #if !defined(PANDORA)
@@ -37,7 +37,7 @@
 -	fbcon_base = (volatile uint32_t *)ml_io_map_wcomb(reg[0], reg[1]);
 +	fbcon_pa = reg[0];
 +	fbcon_sz = reg[1];
-+	fbcon_base = NULL;   /* songyuan: pmap 未就绪，延迟到 bsd_init 前映射 */
++	fbcon_base = NULL;   /* songyuan: pmap 未就绪，延迟映射 */
  	sweet_early_mark(18, "fbcon mapping returned");
  #if defined(FUXI)
  #if !defined(PANDORA)
@@ -52,12 +52,15 @@
  }
  
  #if HIBERNATION
-@@ -1544,3 +1545,19 @@
+@@ -1544,3 +1545,29 @@
  	}
  #endif /* APPLE_UART */
  }
 +
-+/* songyuan: pmap 就绪后再映射帧缓冲（bsd_init 之前调用） */
++/*
++ * songyuan: pmap 就绪后再映射帧缓冲（bsd_init 之前调用）。
++ * 注意：这里先不清屏，只打印映射结果——清屏在真机上曾触发只读页写错误。
++ */
 +void sweet_fbcon_late_init(void);
 +
 +void
@@ -68,8 +71,15 @@
 +	}
 +	fbcon_base = (volatile uint32_t *)ml_io_map_wcomb(fbcon_pa, fbcon_sz);
 +	if (fbcon_base != NULL) {
-+		fbcon_init();
-+		sweet_early_mark(19, "fbcon late mapping ok");
++		fbcon_cols = fbcon_width / (8 * FBCON_SCALE);
++		fbcon_rows = fbcon_height / (16 * FBCON_SCALE);
++		fbcon_col = fbcon_row = 0;
++		printf("[fbcon] mapped pa=0x%llx size=0x%llx base=%p %ux%u stride=%u\n",
++		    (unsigned long long)fbcon_pa, (unsigned long long)fbcon_sz,
++		    (void *)fbcon_base, fbcon_width, fbcon_height, fbcon_stride);
++	} else {
++		printf("[fbcon] mapping FAILED pa=0x%llx size=0x%llx\n",
++		    (unsigned long long)fbcon_pa, (unsigned long long)fbcon_sz);
 +	}
 +}
 --- a/osfmk/kern/startup.c
