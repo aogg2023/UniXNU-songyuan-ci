@@ -183,3 +183,58 @@ MACHINE_FLAGS_ARM64_SONGYUAN = -DARM64_BOARD_CONFIG_SWEET -DFUXI=1 -DPANDORA=1 -
 - 实际编译（本机没有 macOS，也未接入 CI 仓库）
 - 编译产物与 pandora 的 ABI 是否一致（`native-4k-signature-hash-cache` 已应用，但需链接期确认）
 - GPU OPP 表（DT 里没有，需驱动侧补；不阻塞 1–5 级上电）
+---
+
+## 8. Linux 构建实证（2026-10-25，无 macOS）
+
+### 8.1 工具链已建成
+
+用 UniXNU 的 `scripts/linux/setup-toolchain.py` 从源码构建，**全部成功**：
+
+| 组件 | 结果 |
+|---|---|
+| clang 24.0.0git（含 `__builtin_xnu_type_*`） | ✅ 从 pinned LLVM 源码编译 |
+| cctools-port ld64 956.6（`ld/nnm/lipo/ar/strip`） | ✅ 可链接 Mach-O |
+| `mig` / `iig` / `migcom` | ✅ |
+| `xcrun` / `plutil` / `codesign` 替身、`xnu-host-cc`、`lzfse` | ✅ |
+| libdispatch（swift-6.4.0-RELEASE）+ libBlocksRuntime | ✅（cctools 与 firehose 都依赖） |
+
+**验证**：`clang -target arm64-apple-ios17.0 -mkernel -nostdinc -c` 输出
+`Mach-O 64-bit arm64 object` —— Linux 上能产 Apple 目标文件。
+
+### 8.2 构建驱动 `tools/build_xnu_linux.sh`
+
+五步全部打通，每一步都踩过坑并解决：
+
+| 步 | 内容 | 踩过的坑 |
+|---|---|---|
+| 0 | availability.pl + 脚本适配 | XNU 硬拼 `SDKROOT/.../availability.pl`；改为 `XNU_AVAILABILITY_PL` 出口 |
+| 1 | 铺 fakeroot 头 | 缺 `TargetConditionals.h`（iPhoneOS SDK 专有）；`os/` 子目录要整棵拷 |
+| 2 | `make installhdrs` | 无 `sysctl`/`sw_vers` → 用命令行变量覆盖（`SYSCTL_HW_*`、`MEMORY_SIZE`、`HOST_OS_VERSION`、`PLATFORM`） |
+| 3 | `libfirehose_kernel.a` | `<internal/atomic.h>` 指向 libdispatch 的 `src/shims/atomic.h` |
+| 4 | `libcc_kext.a` | `prepare-xnu.py` 要联网拉 llvm-project；本地已有 → 加 `fetch()` 短路 |
+| 5 | 内核 `make` | **当前卡点** |
+
+### 8.3 当前卡点：clang 24 vs Apple clang 的 C++ 兼容性
+
+编译进度：**343 个编译单元完成**（含我们补丁里的 `sweet_pthread_init.o`），
+总计 **30 个错误，集中在 3 个文件**：
+
+| 文件 | 错误 |
+|---|---|
+| `iokit/IOKit/IOLib.h` | `indirection not permitted on operand of type 'void *'`（`IOOverrideTypedOperators` 宏） |
+| `osfmk/vm/vm_compressor.c` | 同类（2 处） |
+| `iokit/Kernel/IOUserServer.cpp` | 同类（2 处） |
+
+原因：Apple clang 对 `IOTypedOperatorsMixin<T>` 里 `operator new/delete` 的模板化写法更宽松；
+LLVM 24 收紧了对 `void *` 解引用的检查。
+
+修法（下一步）：按 UniXNU `prepare-xnu.py` 的做法，用
+`__apple_build_version__` / `__has_feature` 守卫这些宏，让非 Apple clang 走等价路径。
+这属于**源码兼容性补丁**，不是架构问题。
+
+### 8.4 结论
+
+- **不需要 macOS** 这一点已被实证：工具链、installhdrs、firehose、libcc_kext 全部在 Linux 上跑通
+- 剩下的是 clang 版本兼容的长尾，与 UniXNU 当年遇到的是同一类问题
+- CI 路线仍然更快（`macos-14` runner + 已就绪的 196 补丁序列）
