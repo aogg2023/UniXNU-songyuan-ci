@@ -81,7 +81,7 @@ jobs:
         env:
           # keep going after errors so one run reports every compile failure
           MAKEFLAGS: ${{ inputs.keep_going == 'false' && '' || '-k' }}
-          run: bash build.sh 2>&1 | tee build.log || true
+        run: bash build.sh 2>&1 | tee build.log || true
 
       - name: Extract build errors
         if: always()
