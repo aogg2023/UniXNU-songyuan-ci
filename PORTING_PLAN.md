@@ -356,3 +356,37 @@ FAR = ELR = 0xfffffe0007ab3488  →  符号 _arm_init (+0)
    确认 4K 配置下早期映射的结束地址如何计算
 2. 检查 `__ARM64_PMAP_SUBPAGE_L1__` 是否真的生效（`SWEET.h` 里 `defined(PANDORA) || defined(SONGYUAN)` 分支）
 3. 必要时在 CI 里加一个 `PANDORA` 的 4K 对照构建（同一套补丁、不同 machine config）
+### 10.6 已排除项与剩余假设（2026-10-25 收尾）
+
+**已排除**
+
+| 假设 | 证据 |
+|---|---|
+| 段拷贝错误 | 物理 `0x51AB3488` 读出正确 ARM64 代码（`sub sp,sp,#0xd0` …） |
+| 段越界 | `__TEXT_EXEC` 覆盖 `0x7270000..0x7b18000`，`arm_init` 在段内 |
+| bootstrap 表容量 | 4K 下 `BOOTSTRAP_TABLE_SIZE = 16 页`，5 GiB 窗口需 12 页（2 根 + 10 L2），够 |
+| loader 逻辑 | 自检全过，`JUMP` 地址与内核入口一致 |
+| ADT/payload 打包 | `mkpayload` 段表与内核 `otool -l` 完全一致 |
+
+**剩余假设（按优先级）**
+
+1. **`arm_init` 的调用目标没被 KVA 映射覆盖**
+   - `start.s` 用 `create_bootstrap_mapping` 建 V=P 和 KVA 两套映射，
+     范围由 `boot_args.memSize`（即 `x24`）决定
+   - 我们传的是 5 GiB；若 KVA 侧 L1 索引计算与实际 VA 不一致，
+     就会出现"同段内一部分可执行、另一部分 L0 无效"的现象
+2. **`virt_base` 对齐假设**
+   - `mkpayload` 的 `virt_base = text.vmaddr & ~(0x2000000-1)` = `0xfffffe0006000000`
+   - start.s 的 KVA 映射可能假设 `virt_base` 与 `phys_base` 的 2 MB offset 相同
+3. **`_start` 里 `x26 bootFlags` 的取值**（我们没设 `bootFlags`，为 0）
+
+**下一步实验（成本从低到高）**
+
+1. QEMU 里 dump `TTBR1_EL1` 与 L0/L1 表内容，直接比对 `arm_init` 的 VA 索引是否有项
+2. 在 start.s 里 `bl arm_init` 之前加一个 `sweet_early_mark`（该机制已存在，stage 1 就在
+   `arm_init` 第一行）——若能打出 stage 0 而没 stage 1，即确认"调用前失败"
+3. 用 QEMU 的 `-d in_asm` 从入口单步，看第一条取指失败的指令
+
+**命名冲突提醒**：补丁集里 `0103` 有两个（`0103-songyuan-machine-config-4k` 与
+`0103-unixnu-native-4k-bootstrap-capacity`），排序后 songyuan 在前、unixnu 在后，
+应用顺序正常，但阅读时容易混。
