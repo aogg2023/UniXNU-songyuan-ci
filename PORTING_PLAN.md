@@ -953,3 +953,42 @@ PC = 0x0000000100003fb4      ← 用户态
 
 **教训**：把"能写"当成默认能力，是这次事故的根源。参考项目 pandora 的
 `boot_ios.sh` 里 `--log` 需要显式 `ufsrw=1`，正是因为这个开关本身有风险。
+### 11.30 控制台恢复 + UFS 根卷路径的二次 panic（2026-10-26 02:35）
+
+**控制台恢复**：移除 0210（它把 fbcon 映射推迟到 bsd_init 之前），
+回到「0206（控制台路由到 fbcon）+ 原始早期映射」的配置，**屏幕立刻能出字**。
+
+> 教训：我在 11.28 里"优化"出的延迟映射，把 bsd_init 之前的输出全丢了，
+> 反而让真机调试变成盲飞。**能工作的配置不要为了"更干净"去改**。
+
+**UFS 根卷（真 iOS 2.7 GB APFS，只读）引导结果**：屏幕显示 panic：
+
+```
+panic: Invalid kernel stack pointer (probable corruption).
+  at pc 0xfffffff007359e3c (vm_fault_internal+0x20), lr 0xfffffff007359d84
+  esr 0x9600004f   far 0xfffffff008643fc8 (= _intstack_low_guard+0x3fc8)
+```
+
+与 11.26 的签名相同：**第一次缺页 → 处理缺页时再次出错 → 递归 → 中断栈保护页**。
+
+**推断**：`sweet_ufs` 驱动的寄存器基址/参数是按 pandora 的板子写的
+（我们 ADT 里 `sweet-ufs` 的 reg 是 `0x01d84000/0x3000`），在 songyuan 上
+可能不对，于是访问了未映射的 MMIO → 缺页 → 二次故障。
+
+**下一步（明天）**：
+
+1. **核对我们的 UFS 控制器基址**：从 Android 侧 DT 读 `ufshc` 的 `reg`
+   （`/sys/firmware/devicetree/base/...`），与 `mkadt_songyuan.py` 里的 `UFS` 常量比对
+2. 在 `sweet_ufs` 的读路径加 `printf`，打印每次 `lba`、`count` 与 extent 翻译结果
+   （控制台已经能显示，这些打印马上可见）
+3. 若 UFS 基址不对，改正后重试
+
+**今晚已验证可用的真机配置（可复现）**：
+
+| 项 | 值 |
+|---|---|
+| 内核 | kernel27（含 0206 + 原始 fbcon 早期映射，无 0210） |
+| ADT | `ext5.adt`（带 fbcon 节点 + `fuxi-root-extents` 9 段） |
+| 根卷 | `/data/local/tmp/iosroot.img`，2.7 GB，只读（**无 `ufsrw`**） |
+| cmdline | `-v debug=0xc cpus=1 keepsyms=1 rd=ufsroot0` |
+| 传输 | `adb exec-in "sh -c 'cat > FILE'" < local`（2.7 GB 仅 4 秒，258 MB/s） |
