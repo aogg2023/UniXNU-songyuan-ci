@@ -700,3 +700,42 @@ SONGYUAN_NO_FBCON=1 SONGYUAN_DRAM_BASE=0x50000000 SONGYUAN_DRAM_SIZE=0x40000000 
 1. 真机验证：同样去掉 `sweet-fbcon`，看 AppleCLCD 是否能点亮屏幕
 2. 给 fbcon 一个正确的修复（推迟到 pmap 就绪后），恢复文本控制台
 3. 根卷：`rd=none` 目前无根文件系统，需要 pinned 文件 + extent ADT
+### 11.22 往用户态走的第一步：自建 init + HFS+ ramdisk（2026-10-25 晚）
+
+**已完成**：
+
+| 部件 | 结果 |
+|---|---|
+| arm64 Mach-O 静态 init | ✅ 用 clang + cctools `ld64 -static` 编出（`tools/mini-init`，16 KB，`NOUNDEFS`） |
+| HFS+ 镜像 | ✅ macOS CI 用 `hdiutil` 造，内含 `/sbin/launchd` = 我们的 init |
+| 镜像格式修正 | `hdiutil` 默认加 GPT 分区表 → 需切出裸卷（或 CI 加 `-layout NONE`） |
+| payload | ✅ `mkpayload --ramdisk ... rd=md0`，ADT 出现 `RAMDisk` 节点 |
+| 启动 | 内核照常跑到 `_cpu_idle`，日志 84 行 |
+
+**未达成**：日志里没有我们 init 的输出（`SONGYUAN-INIT`），说明根卷没挂上或 init 没被执行。
+内核在没有根卷时会静默进入 idle，所以下一步要专门诊断 `mountroot` 路径。
+
+**踩过的坑**：
+
+1. `clang -target arm64-apple-ios…` 默认用 GNU ld → 必须显式用 cctools `ld64`
+2. C 里写 `_start` 会变成 Mach-O 的 `__start`；入口函数应命名为 `start`
+3. `ld64` 拒绝不带 `libSystem` 的动态可执行文件 → 必须 `-static`
+4. `hpmount`（hfsplus 工具）对裸 HFS+ 卷会交互式询问且挂载失败 → 不可用，
+   改用 macOS CI 的 `hdiutil`
+5. `hdiutil create` 默认生成 **GPT 分区表**镜像，XNU 需要裸卷：
+   `hdiutil create ... -layout NONE`，或从镜像里按 GPT 切出分区
+6. `hdiutil convert -o X` 实际输出 `X.dmg`（自动加后缀）
+7. CI 里 `hdiutil attach -mountpoint` 要求挂载点目录**先存在**
+
+`mini-init` 的源码（syscall 直调，不依赖 libSystem）：
+
+```c
+static long sys_write(int fd, const void *b, unsigned long n) {
+	register long x0 __asm__("x0") = fd;
+	register long x1 __asm__("x1") = (long)b;
+	register long x2 __asm__("x2") = (long)n;
+	register long x16 __asm__("x16") = 4;      /* SYS_write */
+	__asm__ volatile("svc #0x80" : "+r"(x0) : "r"(x1),"r"(x2),"r"(x16) : "memory");
+	return x0;
+}
+```
