@@ -42,3 +42,22 @@
  		if (PE_parse_boot_argn("apfs_cheap", &cheap, sizeof(cheap))) {
  			am->am_nx.cheap_requests = (cheap != 0);
  		}
+@@ -1460,3 +1443,18 @@
+ 	.vfs_vget = apfs_vget,
+ 	.vfs_init = apfs_init,
+ };
++
++/*
++ * songyuan: APFS 的锁统计用这个辅助函数（他们的 osfmk/kern/thread.c 改过）。
++ * 我们只读挂载、不做锁诊断，给一个空实现即可。
++ */
++void
++thread_runnable_and_run_self(uint64_t *runnable, uint64_t *run)
++{
++	if (runnable != NULL) {
++		*runnable = 0;
++	}
++	if (run != NULL) {
++		*run = 0;
++	}
++}
