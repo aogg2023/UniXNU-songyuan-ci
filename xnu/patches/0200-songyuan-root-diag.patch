@@ -4,11 +4,11 @@
  
  		bsd_init_kprintf("vfs_mountroot\n");
  		if (0 == (err = vfs_mountroot())) {
-+			kprintf("SONGYUAN root: vfs_mountroot OK\n");
++			printf("SONGYUAN root: vfs_mountroot OK\n");
  			break;
  		}
  		rootdevice[0] = '\0';
-+		kprintf("SONGYUAN root: vfs_mountroot FAILED err=%d rootdevice='%s'\n",
++		printf("SONGYUAN root: vfs_mountroot FAILED err=%d rootdevice='%s'\n",
 +		    err, rootdevice);
  #if CONFIG_NETBOOT
  		if (netboot) {
@@ -17,7 +17,7 @@
  	kern_return_t   err;
  
  	err = IOFindBSDRoot(rootdevice, sizeof(rootdevice), &rootdev, &flags);
-+	kprintf("SONGYUAN root: IOFindBSDRoot err=%d flags=0x%x rootdev=0x%x name='%s'\n",
++	printf("SONGYUAN root: IOFindBSDRoot err=%d flags=0x%x rootdev=0x%x name='%s'\n",
 +	    err, flags, (unsigned)rootdev, rootdevice);
  	if (err) {
  		printf("setconf: IOFindBSDRoot returned an error (%d);"

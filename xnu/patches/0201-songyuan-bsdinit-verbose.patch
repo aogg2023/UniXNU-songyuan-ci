@@ -1,6 +1,6 @@
 --- a/bsd/kern/bsd_init.c
 +++ b/bsd/kern/bsd_init.c
-@@ -490,7 +490,8 @@
+@@ -491,14 +491,15 @@
  	platform_stall_panic_or_spin(PLATFORM_STALL_XNU_LOCATION_BSD_INIT);
  #endif
  
@@ -10,3 +10,11 @@
  #define DEBUG_BSDINIT 1
  #else
  #define DEBUG_BSDINIT 0
+ #endif
+ 
+ #if DEBUG_BSDINIT
+-#define bsd_init_kprintf(x, ...) kprintf("bsd_init: " x, ## __VA_ARGS__)
++#define bsd_init_kprintf(x, ...) printf("bsd_init: " x, ## __VA_ARGS__)
+ #else
+ #define bsd_init_kprintf(x, ...)
+ #endif
