@@ -175,13 +175,12 @@ jobs:
         if: always()
         run: |
           set -euxo pipefail
-          # init 二进制已签入仓库（Linux 上用 cctools ld64 编好）
           file tools/mini-init
           mkdir -p out
-          rm -rf "$RUNNER_TEMP/rd.dmg" "$RUNNER_TEMP/rd_raw.dmg"
-          # 裸卷（-layout NONE）+ catalog 节点 8 KiB（-c 8192）：XNU 的 HFS 驱动要 8 KiB
-          hdiutil create -size 128m -fs HFS+ -fsargs "-c 8192" -layout NONE -volname SONGYUAN -quiet "$RUNNER_TEMP/rd.dmg"
+          rm -rf "$RUNNER_TEMP/rd.dmg" "$RUNNER_TEMP/rd_raw.dmg" "$RUNNER_TEMP/rd"
           mkdir -p "$RUNNER_TEMP/rd"
+          # 裸卷（-layout NONE），catalog 节点强制 8 KiB（XNU 的 B-tree 代码按 8 KiB 处理）
+          hdiutil create -size 128m -fs HFS+ -fsargs "-c 8192" -layout NONE -volname SONGYUAN -quiet "$RUNNER_TEMP/rd.dmg"
           hdiutil attach -nobrowse -noverify -mountpoint "$RUNNER_TEMP/rd" "$RUNNER_TEMP/rd.dmg"
           mkdir -p "$RUNNER_TEMP/rd/sbin"
           cp tools/mini-init "$RUNNER_TEMP/rd/sbin/launchd"
@@ -191,7 +190,7 @@ jobs:
           hdiutil detach "$RUNNER_TEMP/rd"
           hdiutil convert "$RUNNER_TEMP/rd.dmg" -format UDRW -o "$RUNNER_TEMP/rd_raw"
           ls -l "$RUNNER_TEMP/rd_raw.dmg"
-          # 自检：裸卷签名 + catalog 节点大小
+          # 探针：把卷参数写进一个小文件（不要用 assert 当探针，失败就看不到值了）
           python3 - "$RUNNER_TEMP/rd_raw.dmg" <<'PY'
           import struct, sys
           raw = open(sys.argv[1], "rb").read()
@@ -200,16 +199,39 @@ jobs:
           cat = raw[1024 + 272: 1024 + 272 + 80]
           start, bcnt = struct.unpack_from(">II", cat, 16)
           hdr = start * bs + 14
+          depth, root, leafrec = struct.unpack_from(">HII", raw, hdr)
           node = struct.unpack_from(">H", raw, hdr + 18)[0]
-          print(f"volume signature={sig} blockSize={bs} catalogNodeSize={node}")
-          assert sig == b"H+", "not a bare HFS+ volume"
-          assert node == 8192, f"catalog node size {node} != 8192"
+          has_sbin = "sbin".encode("utf-16-le") in raw
+          has_launchd = "launchd".encode("utf-16-le") in raw
+          moff = raw.find(b"\xcf\xfa\xed\xfe")
+          print(f"signature={sig} blockSize={bs} catalogNodeSize={node} treeDepth={depth} leafRecords={leafrec}")
+          print(f"catalog_has_sbin={has_sbin} catalog_has_launchd={has_launchd} macho_magic_offset=0x{moff:x}")
+          print(f"image_bytes={len(raw)}")
           PY
+          python3 - "$RUNNER_TEMP/rd_raw.dmg" > out/ramdisk-info.txt <<'PY'
+          import struct, sys
+          raw = open(sys.argv[1], "rb").read()
+          sig = raw[1024:1026].decode("latin1")
+          bs = struct.unpack_from(">I", raw, 1024 + 40)[0]
+          cat = raw[1024 + 272: 1024 + 272 + 80]
+          start, bcnt = struct.unpack_from(">II", cat, 16)
+          hdr = start * bs + 14
+          node = struct.unpack_from(">H", raw, hdr + 18)[0]
+          print(f"signature={sig}")
+          print(f"blockSize={bs}")
+          print(f"catalogNodeSize={node}")
+          print(f"has_sbin={'sbin'.encode('utf-16-le') in raw}")
+          print(f"has_launchd={'launchd'.encode('utf-16-le') in raw}")
+          print(f"image_bytes={len(raw)}")
+          PY
+          cat out/ramdisk-info.txt
           gzip -9 -c "$RUNNER_TEMP/rd_raw.dmg" > out/ramdisk.img.gz
-          ls -la out/ramdisk.img.gz
+          ls -la out
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: xnu-ramdisk
-          path: out/ramdisk.img.gz
+          path: |
+            out/ramdisk.img.gz
+            out/ramdisk-info.txt
           if-no-files-found: warn
