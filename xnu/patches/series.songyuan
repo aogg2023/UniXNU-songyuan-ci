@@ -220,3 +220,4 @@
 0203-songyuan-startup-verbose.patch
 0204-songyuan-init-errno.patch
 0205-songyuan-fbcon-late.patch
+0206-songyuan-console-to-fbcon.patch

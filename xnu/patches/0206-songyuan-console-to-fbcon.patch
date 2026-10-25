@@ -1,0 +1,20 @@
+--- a/osfmk/console/serial_console.c
++++ b/osfmk/console/serial_console.c
+@@ -133,8 +133,17 @@
+ #if __x86_64__
+ uint32_t cons_ops_index = VC_CONS_OPS;
+ #else
++#if defined(SONGYUAN)
++/*
++ * songyuan: 把控制台下沉到 serial_putc_options，它会走 uart_putc_options_()
++ * 遍历已注册设备（我们的 sweet-fbcon 就在里面），于是 printf 的内容也能画到屏幕上。
++ * 默认的 VC_CONS_OPS 用 PE_state.video 的地址，那不是我们映射的那块。
++ */
++SECURITY_READ_ONLY_LATE(uint32_t) cons_ops_index = SERIAL_CONS_OPS;
++#else
+ SECURITY_READ_ONLY_LATE(uint32_t) cons_ops_index = VC_CONS_OPS;
+ #endif
++#endif
+ 
+ LCK_GRP_DECLARE(console_lck_grp, "console");
+ 
