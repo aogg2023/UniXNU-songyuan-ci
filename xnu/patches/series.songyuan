@@ -213,3 +213,4 @@
 0103-songyuan-machine-config-4k.patch
 0103b-songyuan-diag-regs.patch
 0199-songyuan-ios-va-layout.patch
+0199b-songyuan-klog.patch

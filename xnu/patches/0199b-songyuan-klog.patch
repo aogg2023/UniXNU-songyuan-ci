@@ -1,0 +1,79 @@
+diff --git a/osfmk/arm64/songyuan_log.c b/osfmk/arm64/songyuan_log.c
+new file mode 100644
+--- /dev/null
++++ b/osfmk/arm64/songyuan_log.c
+@@ -0,0 +1,29 @@
++/*
++ * songyuan: 内核控制台日志的落地缓冲（来自 HackiOS 的 loader_log 思路）。
++ *
++ * 为什么需要：panic 的文本打在帧缓冲上会被随后的清屏/显示驱动覆盖，
++ * 或停留时间短到无法拍摄。把 kprintf 的每个字符额外追加到这块静态缓冲，
++ * panic 之后按物理地址 dump 出来就能读到全文。
++ *
++ * 定位方式：nm 找 songyuan_log_buf / songyuan_log_len，
++ * 物理地址 = 符号 VA - __TEXT vmaddr(0xfffffff007004000) + physBase。
++ */
++#include <mach/mach_types.h>
++
++#define SONGYUAN_LOG_SIZE (512 * 1024)
++
++char songyuan_log_buf[SONGYUAN_LOG_SIZE];
++volatile unsigned int songyuan_log_len;
++
++void loader_log_putc(char c);
++
++void
++loader_log_putc(char c)
++{
++	unsigned int n = songyuan_log_len;
++
++	if (n < (SONGYUAN_LOG_SIZE - 1)) {
++		songyuan_log_buf[n] = c;
++		songyuan_log_len = n + 1;
++	}
++}
+diff --git a/pexpert/arm/pe_kprintf.c b/pexpert/arm/pe_kprintf.c
+--- a/pexpert/arm/pe_kprintf.c
++++ b/pexpert/arm/pe_kprintf.c
+@@ -28,8 +28,9 @@
+ 
+ static SIMPLE_LOCK_DECLARE(kprintf_lock, 0);
+ 
+ static void serial_putc_crlf(char c);
++extern void loader_log_putc(char c);   /* songyuan: 内核日志落地 */
+ 
+ __startup_func
+ static void
+ PE_init_kprintf_config(void)
+@@ -159,8 +160,9 @@
+ 	if (c == '\n') {
+ 		uart_putc('\r');
+ 	}
+ 	uart_putc(c);
++	loader_log_putc(c);
+ }
+ 
+ void
+ serial_putc_options(char c, bool poll)
+diff --git a/osfmk/console/serial_console.c b/osfmk/console/serial_console.c
+--- a/osfmk/console/serial_console.c
++++ b/osfmk/console/serial_console.c
+@@ -606,8 +606,10 @@
+  */
+ void
+ console_write_unbuffered(char c)
+ {
++	extern void loader_log_putc(char c);   /* songyuan: 内核日志落地 */
++	loader_log_putc(c);
+ 	_cnputc(c, true);
+ }
+ 
+ /**
+diff --git a/osfmk/conf/files.arm64 b/osfmk/conf/files.arm64
+--- a/osfmk/conf/files.arm64
++++ b/osfmk/conf/files.arm64
+@@ -106,3 +106,4 @@
+ osfmk/arm64/corecrypto/sha256_compress_arm64.s	standard
+ 
+ osfmk/arm/counter.c	standard
++osfmk/arm64/songyuan_log.c		standard
