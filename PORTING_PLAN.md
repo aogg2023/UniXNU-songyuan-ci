@@ -830,3 +830,29 @@ X0 = 9                                           ← open("/dev/console") 的 fd
 
 > 遇到问题先翻用户给的项目。这次如果先对比他们的 prebuilt 二进制，
 > 会早好几个小时发现 `LC_MAIN` 这个自造的问题。
+### 11.26 真机屏幕终于能出字了（2026-10-25 20:40）
+
+**成功**：把 `cons_ops_index` 从 `VC_CONS_OPS` 改为 `SERIAL_CONS_OPS`（补丁 0206）后，
+`printf` 也会走 `uart_putc_options_()` → 遍历已注册设备 → **sweet-fbcon 把字画到屏幕上**。
+真机照片里第一次出现了完整的内核 panic 文本。
+
+**新发现的 panic 链**（真机，修复清屏后依旧）：
+
+| 地址 | 符号 |
+|---|---|
+| `pc 0xfffffff007359e3c` | `vm_fault_internal+0x20` |
+| `lr` | `vm_fault$XNU_INTERNAL+0x14` |
+| panic 处 | `sleh_synchronous_sp1`（同步异常向量） |
+| `far 0xfffffff008637fc8` | **`_intstack_low_guard+0x3fc8`**（中断栈保护页） |
+
+`esr 0x9600004f` = 数据中止 + **写** + 权限错误。
+
+结论：**第一次缺页 → 处理缺页时再次出错 → 递归 → 栈溢出到中断栈保护页**
+→ `check_exception_stack` 判栈指针非法 → panic。
+
+起点是 `ml_io_map_wcomb()` 在真机上返回的 FRAMEBUFFER 映射地址不可写
+（在 QEMU 里没有 fbcon 节点所以没暴露）。
+
+**当前策略**：真机先用「不带 fbcon」的已知可用配置（`SONGYUAN_NO_FBCON=1`），
+确认能否跑到用户态；屏幕输出另找正确映射方式（候选：`ml_io_map` 而非
+`ml_io_map_wcomb`，或延后到 IOKit 完全就绪后再映射）。
