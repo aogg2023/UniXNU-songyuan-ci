@@ -8,6 +8,15 @@
  
  #
  #	4.4 filesystems
+--- a/config/MASTER.arm64.songyuan
++++ b/config/MASTER.arm64.songyuan
+@@ -113,3 +113,6 @@
+ 
+ options   CONFIG_RESLIDE_SHARED_CACHE		# <reslide_shared_cache>
+ options   CONFIG_KERNEL_TBI		# <kernel_tbi>
++
++# APFS（只读）：用作根卷的 APFS 镜像
++options		apfs
 --- a/bsd/conf/files
 +++ b/bsd/conf/files
 @@ -174,6 +174,13 @@
@@ -30,7 +39,7 @@
  extern  struct vfsops nullfs_vfsops;
  extern struct vfsops bindfs_vfsops;
  
-+#if APFS
++#if APFS || defined(SONGYUAN)
 +	/* Apple File System, read only（APFS 镜像作根卷） */
 +	{
 +		.vfc_vfsops = &apfs_vfsops,
@@ -52,7 +61,7 @@
  #if MOCKFS
  extern  struct vfsops mockfs_vfsops;
 +
-+#if APFS
++#if APFS || defined(SONGYUAN)
 +extern  struct vfsops apfs_vfsops;
 +extern  int apfs_mountroot(mount_t, vnode_t, vfs_context_t);
 +#endif /* APFS */
@@ -74,7 +83,7 @@
  extern struct vnodeopv_desc devfs_devfd_vnodeop_opv_desc;
  extern const struct vnodeopv_desc devfs_fdesc_vnodeop_opv_desc;
 +
-+#if APFS
++#if APFS || defined(SONGYUAN)
 +extern const struct vnodeopv_desc apfs_vnodeop_opv_desc;
 +#endif /* APFS */
  #endif /* FDESC */
@@ -84,7 +93,7 @@
  extern const struct vnodeopv_desc bindfs_vnodeop_opv_desc;
  
  const struct vnodeopv_desc *vfs_opv_descs[] = {
-+#if APFS
++#if APFS || defined(SONGYUAN)
 +	&apfs_vnodeop_opv_desc,
 +#endif /* APFS */
  	&dead_vnodeop_opv_desc,
