@@ -7,7 +7,7 @@
  ifneq ($(filter $(PLATFORM),MacOSX),)
 -ifeq ($(filter PANDORA,$(CURRENT_MACHINE_CONFIG)),)
 +# SONGYUAN 也是 4 KiB 页：必须和 PANDORA 一样留在 iOS 布局（0xfffffff0_...），
-+# 否则会用 41 位的链接地址而 T1SZ_BOOT=26 只覆盖 38 位，KVA 全部不可译。
++# 否则会用 41 位的链接地址，而 T1SZ_BOOT=26 只覆盖 38 位，KVA 全部不可译。
 +ifeq ($(filter PANDORA SONGYUAN,$(CURRENT_MACHINE_CONFIG)),)
  LARGE_MEMORY_DEFINE=-DARM_LARGE_MEMORY=1
  ARM64_PLKSEG_ADDR  =0xfffffe0004004000
