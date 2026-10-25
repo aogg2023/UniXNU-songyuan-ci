@@ -923,3 +923,33 @@ PC = 0x0000000100003fb4      ← 用户态
 
 **下一步**：用 IPSW（已完整下载 6.17 GB）里的 `096-04088-077.dmg`（4.4 GB，APFS）
 提取真正的 iOS 根文件系统，用 `mkapfs.py` 打成镜像，跑真正的 `launchd`。
+### 11.29 事故记录：ufsrw=1 写坏了 userdata（2026-10-25 深夜）
+
+**现象**：带 `ufsrw=1` + `--log-extents` 引导一次后，Android 两个槽都进 Recovery，
+黑屏无法启动。Recovery 里「清除数据」后立刻恢复正常。
+
+**结论**：坏的是 **userdata 文件系统**（super/系统分区完好）。
+
+**已排查**：
+
+| 检查项 | 结果 |
+|---|---|
+| extent 语义（分区相对 vs 整盘绝对） | ✅ 内核是 `lba = userdata起始块 + part + off`，**分区相对**，与 FIEMAP 输出一致 |
+| 日志属性名 | ✅ `pandora-log-extents` / `pandora-log-blocks`，mkadt 与内核补丁一致 |
+| 根卷/日志 extent 重叠检查 | ✅ 内核里有 overlap 检查 |
+| 写入范围限制 | ✅ `fx_write_allowed` 只允许 extent 内 |
+
+**因此可疑点**：**UFS 写入路径**（真机上首次实写）——可能是 LUN/块大小假设、
+写缓存刷新、或驱动在初始化时做了非预期的写。
+
+**新规则（必须遵守）**：
+
+1. **未验证前禁止 `ufsrw=1`**。真机实验一律**只读**。
+2. 需要观测内核输出时，**用屏幕**（修好 fbcon 延迟映射），不要靠写存储。
+3. 若确实要验证写路径，先在一块**明确无用的临时文件**上做，并在 Android 侧
+   校验"只有该文件内容变化"（对比前后 hash）。
+4. 每次真机实验前，确认 `slot-successful` 槽位、记住当前 slot（`fastboot getvar current-slot`），
+   事后不要随意 `--set-active`。
+
+**教训**：把"能写"当成默认能力，是这次事故的根源。参考项目 pandora 的
+`boot_ios.sh` 里 `--log` 需要显式 `ufsrw=1`，正是因为这个开关本身有风险。
