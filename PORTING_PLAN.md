@@ -587,3 +587,56 @@ dump 该帧即可拿到**第 1 次故障的 FAR/ELR**，也就是出错的确切
 | Linux + stock clang + theos cctools，无需 Xcode | 与我们自建的 Linux 工具链一致，路线可复用 |
 | `qemu/where.py` + `sym.py` 在线符号化 | 可直接借用（我们目前用 nm + 手算） |
 | DPU / Adreno 660 / Wi-Fi 补丁 | 硅不同（840 vs 660），暂不移植，显示部分可参考 `docs/LEMONADE-DISPLAY.md` |
+### 11.15 真正的根因：`fbcon_init` 在 pmap 就绪前映射帧缓冲
+
+`-d int` 抓到的**第一条异常**（`-cpu max`）：
+
+```
+Taking exception 4 [Data Abort] on CPU 0
+...with ESR 0x25/0x96000047        EC=0x25 (同 EL 数据中止), WnR=1 (写), DFSC=0x7 (L3 翻译错误)
+...with FAR 0xfffffff04d300000     要写的地址：无效
+...with ELR 0xfffffff007a486c8     → _fbcon_init+0xb4
+```
+
+`_fbcon_init+0xb4` 对应 `pexpert/arm/pe_serial.c` 里 `fbcon_clear_row()`
+写 `fbcon_base` 的第一条语句。而：
+
+```c
+fbcon_base = (volatile uint32_t *)ml_io_map_wcomb(reg[0], reg[1]);   /* pe_serial.c:861 */
+```
+
+`fbcon_init` 由 `PE_init_kprintf` 以 `STARTUP_RANK_FIRST` 调用，
+**此时 `pmap_bootstrap` 还没执行**（它在 `arm_init → arm_vm_init` 里），
+`ml_io_map_wcomb()` 返回的 VA 没有对应的页表项 → 写入即中止。
+
+**完整因果链**：
+
+1. 内核实现在极早期初始化控制台
+2. `ml_io_map_wcomb()` 在 pmap 未就绪时返回无效 VA
+3. `fbcon_clear_row()` 写该地址 → 数据中止（FAR `0xfffffff04d300000`）
+4. 异常进入 trap 路径，调试/打印代码再次出错（`DebuggerTrapWithState`）
+5. `check_exception_stack` 判栈异常 → `"Invalid kernel stack pointer"` → `halt_all_cpus`
+
+→ **控制台自身是最先崩的那一环，所以屏幕上永远没有日志。**
+
+### 11.16 修复方向（按可行性）
+
+| 方案 | 说明 | 代价 |
+|---|---|---|
+| A. 推迟 fbcon | 把帧缓冲控制台初始化从 `STARTUP_RANK_FIRST` 挪到 pmap 就绪之后 | 一个补丁，需确认 XNU 启动秩 |
+| B. 先线性映射 FB | 让 ADT 的 framebuffer `reg` 落在 bootstrap 覆盖的 DRAM 窗口内（需硬件 FB 可分页，不现实） | 不可行 |
+| C. 失败即降级 | `ml_io_map_wcomb` 返回后先验证可写，失败则跳过 fbcon（退回串口） | 能启动但无屏，只适合配合 QEMU trace |
+| D. loader 预先建映射 | loader 在 MMU 关闭时无法建映射 | 不可行 |
+
+**推荐 A**：与 pandora 的差异可能就在启动秩/初始化顺序上。
+
+### 11.17 复现命令（一次到位）
+
+```sh
+qemu-system-aarch64 -M virt,gic-version=3 -cpu max -smp 1 -m 4G -nographic \
+  -serial file:serial.txt -monitor none -no-reboot -d int -D int.log \
+  -kernel /tmp/qemu/loader/Image
+grep -a -m1 -A5 "Taking exception" int.log
+```
+
+> 必须 `-cpu max`；`cortex-a57` 会先报假的 `Undefined Instruction`（缺 LSE 原子指令）。
