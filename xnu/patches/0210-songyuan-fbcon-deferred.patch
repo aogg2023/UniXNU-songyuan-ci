@@ -13,7 +13,7 @@
  fbcon_transmit_data(uint8_t c)
  {
 +	if (fbcon_base == NULL) {
-+		return;   /* songyuan: 还没映射，丢弃（日志仍有 sweet_log_ring 兜底） */
++		return;   /* songyuan: 未映射时丢弃 */
 +	}
  	if (c == '\r') {
  		fbcon_col = 0;
@@ -25,7 +25,7 @@
 -	fbcon_base = (volatile uint32_t *)ml_io_map_wcomb(reg[0], reg[1]);
 +	fbcon_pa = reg[0];
 +	fbcon_sz = reg[1];
-+	fbcon_base = NULL;   /* songyuan: pmap 未就绪，延迟映射 */
++	fbcon_base = NULL;   /* songyuan: 延迟映射 */
  	sweet_early_mark(18, "fbcon mapping returned");
  #if defined(FUXI)
  #if !defined(PANDORA)
@@ -36,17 +36,20 @@
 -    if (fbcon_base != NULL) {
 -		register_serial_functions(&sweet_fbcon_serial_functions);
 -	}
-+    /* songyuan: 先注册设备，绘制等 pmap 就绪后的延迟映射 */
++    /* songyuan: 先注册设备；绘制等延迟映射 */
 +	register_serial_functions(&sweet_fbcon_serial_functions);
  }
  
  #if HIBERNATION
-@@ -1366,3 +1371,18 @@
+@@ -1366,3 +1371,23 @@
  	}
  #endif /* APPLE_UART */
  }
 +
-+/* songyuan: pmap 就绪后再映射帧缓冲（bsd_init 之前调用，此时映射才有效） */
++/*
++ * songyuan: pmap 就绪后再映射帧缓冲（bsd_init 之前）。
++ * 注意：这里**不清屏**——真机上清屏会触发缺页递归崩溃（见 PORTING_PLAN 11.29）。
++ */
 +void sweet_fbcon_late_init(void);
 +
 +void
@@ -57,7 +60,9 @@
 +	}
 +	fbcon_base = (volatile uint32_t *)ml_io_map_wcomb(fbcon_pa, fbcon_sz);
 +	if (fbcon_base != NULL) {
-+		fbcon_init();
++		fbcon_cols = fbcon_width / (8 * FBCON_SCALE);
++		fbcon_rows = fbcon_height / (16 * FBCON_SCALE);
++		fbcon_col = fbcon_row = 0;
 +	}
 +}
 --- a/osfmk/kern/startup.c
