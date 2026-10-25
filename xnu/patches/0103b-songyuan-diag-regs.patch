@@ -1,11 +1,12 @@
 --- a/osfmk/arm64/start.s
 +++ b/osfmk/arm64/start.s
-@@ -945,6 +945,21 @@
- #endif
+@@ -1001,8 +1001,23 @@
  
- 	// Return to arm_init()
+ 	mov		lr, x19
+ 
+ 	/* Return to arm_init() */
 +	/* SONGYUAN diag: 记录翻译设置，崩溃后 dump boot_args 页读回。
-+	 * 此时 MMU 已开，boot_args 的 PA 在 x20，先转成 VA。 */
++	 * 位于 arm_init_tramp：此处 MMU 已开，boot_args 的 PA 在 x20，先转 VA。 */
 +	mov		x9, x20
 +	add		x9, x9, x22
 +	sub		x9, x9, x23
@@ -21,4 +22,5 @@
 +	str		x10, [x9, #0x720]
  	ret
  
- Ltrampoline:
+ //#include	"globals_asm.h"
+ 
