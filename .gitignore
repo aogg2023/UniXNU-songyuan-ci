@@ -1,0 +1,19 @@
+# 构建产物与本地输入
+out/
+build/
+*.o
+*.a
+*.dylib
+*.ipsw
+*.img
+*.bin
+.cache/
+__pycache__/
+*.pyc
+
+# 苹果私有件绝不入库
+*.dtb
+kernelcache*
+trustcache*
+*.im4p
+*.im4p.payload
