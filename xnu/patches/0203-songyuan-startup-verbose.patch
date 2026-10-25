@@ -1,0 +1,15 @@
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -216,7 +216,12 @@
+ 
+ extern int serverperfmode;
+ 
++#if defined(SONGYUAN)
++/* songyuan: 默认打开启动阶段详细日志，用于定位初始化停顿 */
++TUNABLE(startup_debug_t, startup_debug, "startup_debug", STARTUP_DEBUG_VERBOSE);
++#else
+ TUNABLE(startup_debug_t, startup_debug, "startup_debug", 0);
++#endif
+ 
+ static inline void
+ kernel_bootstrap_log(const char *message)
