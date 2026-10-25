@@ -1,26 +1,27 @@
 --- a/osfmk/arm64/start.s
 +++ b/osfmk/arm64/start.s
-@@ -1001,8 +1001,23 @@
+@@ -942,8 +942,24 @@
  
- 	mov		lr, x19
+ 	mov	x0, x20
+ 	mov	lr, x21
+ #endif
++	/* SONGYUAN diag（冷启动路径，MMU 已开）：先写魔数证明执行到，再记录翻译设置。 */
++	MOV64	x9, 0x534f4e4759554e01
++	mov		x10, x20
++	add		x10, x10, x22
++	sub		x10, x10, x23
++	str		x9, [x10, #0x6F0]
++	mrs		x11, TTBR0_EL1
++	str		x11, [x10, #0x700]
++	mrs		x11, TTBR1_EL1
++	str		x11, [x10, #0x708]
++	mrs		x11, TCR_EL1
++	str		x11, [x10, #0x710]
++	mrs		x11, SCTLR_EL1
++	str		x11, [x10, #0x718]
++	mrs		x11, ID_AA64MMFR0_EL1
++	str		x11, [x10, #0x720]
  
- 	/* Return to arm_init() */
-+	/* SONGYUAN diag: 记录翻译设置，崩溃后 dump boot_args 页读回。
-+	 * 位于 arm_init_tramp：此处 MMU 已开，boot_args 的 PA 在 x20，先转 VA。 */
-+	mov		x9, x20
-+	add		x9, x9, x22
-+	sub		x9, x9, x23
-+	mrs		x10, TTBR0_EL1
-+	str		x10, [x9, #0x700]
-+	mrs		x10, TTBR1_EL1
-+	str		x10, [x9, #0x708]
-+	mrs		x10, TCR_EL1
-+	str		x10, [x9, #0x710]
-+	mrs		x10, SCTLR_EL1
-+	str		x10, [x9, #0x718]
-+	mrs		x10, ID_AA64MMFR0_EL1
-+	str		x10, [x9, #0x720]
+ 	// Return to arm_init()
  	ret
- 
- //#include	"globals_asm.h"
  
