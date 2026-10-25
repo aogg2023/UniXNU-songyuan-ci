@@ -291,6 +291,8 @@ def build(seed=None, qemu=False, qemu_gic=False, root_props=(), gpu_pool=0):
         ('compatible', cstr('arm,gic-v3')),
         ('interrupt-controller', b''),
         ('virtual-timer-intid', u32(QEMU_VTIMER_INTID if qemu or qemu_gic else VTIMER_INTID)),
+                # 相对 arm-io：XNU 的 pe_fiq 会加上父节点基址(SOC_BASE=0x01000000)，
+        # 所以这里必须写 gicd-SOC_BASE；写成绝对地址会多偏移 16 MiB（实测触发外部中止）
         ('reg', u64(gicd - SOC_BASE, GICD_SIZE, gicr - SOC_BASE, GICR_SIZE)),
     ])
     arm_io = node('arm-io', [
@@ -370,7 +372,9 @@ def build(seed=None, qemu=False, qemu_gic=False, root_props=(), gpu_pool=0):
         ('manufacturer', cstr('Apple Inc.')),
         ('#address-cells', u32(2)),
         ('#size-cells', u32(2)),
-    ], [chosen, options, defaults, cpus, arm_io, fbcon, buttons, pram] + product + ([] if qemu else [ufs]))
+    ], [chosen, options, defaults, cpus, arm_io]
+       + ([] if os.environ.get('SONGYUAN_NO_FBCON') == '1' else [fbcon])
+       + [buttons, pram] + product + ([] if qemu else [ufs]))
 
 
 if __name__ == '__main__':

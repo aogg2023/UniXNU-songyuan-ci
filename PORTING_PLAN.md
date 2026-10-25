@@ -640,3 +640,63 @@ grep -a -m1 -A5 "Taking exception" int.log
 ```
 
 > 必须 `-cpu max`；`cortex-a57` 会先报假的 `Undefined Instruction`（缺 LSE 原子指令）。
+### 11.18 三个真 bug 修完，内核进入 idle（2026-10-25 收官）
+
+修完下列三处后，QEMU 里内核**完整启动并进入 `_cpu_idle`**（PC = `_cpu_idle+0x1ec`），
+日志环 83 行，无 panic：
+
+| # | 问题 | 修复 |
+|---|---|---|
+| 1 | `ARM_LARGE_MEMORY` 让 4K 内核链到 41 位地址，`T1SZ_BOOT=26` 只覆盖 38 位 | `0199-songyuan-ios-va-layout.patch`（豁免 SONGYUAN） |
+| 2 | `fbcon_init` 在 `pmap_bootstrap` 之前调 `ml_io_map_wcomb`，写未映射 VA → Data Abort | 暂时从 ADT 去掉 `sweet-fbcon` 节点（`SONGYUAN_NO_FBCON=1`），改由 AppleCLCD 接管显示 |
+| 3 | GIC `reg` 曾被误改成绝对地址，导致外部中止 | **恢复相对 arm-io 的写法**：XNU 的 `pe_fiq` 会加 `SOC_BASE=0x01000000` |
+
+**关于 #3 的实测证据**（一次外部中止就够）：
+
+```
+esr 0x96000010 (synchronous external abort)  far 0xfffffff050147008
+x1 = 0x090a0000  =  GICR(0x080a0000) + 0x01000000   ← XNU 加的 SOC_BASE
+```
+
+### 11.19 启动日志（节选，来自 `sweet_log_ring`）
+
+```
+VM bootstrap done: 61 maps, 112 entries and 116 holes left
+iBoot version: songyuan-shim
+IONVRAM.cpp: NVRAM size is 8192 bytes, _bankSize=0x2000
+SWEET AMFI: built-in interface registered (XML entitlements)
+PANDORA PMGR: publisher started (mode 1)
+Security policy loaded: Guarded vnode policy (vnguard)
+SWEET AKS: AppleKeyStore registered (no passcode, unlocked)
+PANDORA GPU UC: PandoraAdrenoGpu registered
+SWEET WDT: IOWatchdog registered
+SWEET HID: buttons / touch registered
+SWEET BATTERY: static fallback, 100% 4200mV
+SWEET: platform expert registered
+SWEET CPU: cpu=0 mpidr=0x0 came alive; SGI1 OK
+MAC Framework successfully initialized
+using 5020 buffer headers and 4558 cluster IO buffer headers
+SWEET CPU: 1/1 CPUs initialized, SGI1 verified
+SWEET FB: present up to 60 Hz → AppleARMBacklight published
+SWEET FB: AppleCLCD 1200x2668 stride 4800 at 0xfc800000, presented as 1125x2436
+```
+
+### 11.20 观测方法（本轮确立，复用价值高）
+
+```sh
+# 1. 生成不带 fbcon 的 QEMU ADT（QEMU 的 GIC 在 0x08000000）
+SONGYUAN_NO_FBCON=1 SONGYUAN_DRAM_BASE=0x50000000 SONGYUAN_DRAM_SIZE=0x40000000 \
+  python3 tools/mkadt_songyuan.py adt --qemu-gic
+# 2. payload + loader（QEMU=1）
+# 3. qemu-system-aarch64 -cpu max，跑 15-20 秒后 stop
+# 4. dump 日志环：total @0x51CA2940，ring @0x51CA2948（4 MiB，按 total%SIZE 旋转）
+```
+
+> 符号地址随内核变化，需每次用 `nm` 重新取 `sweet_log_total` / `sweet_log_ring`，
+> 物理地址 = VA − virt_base(`vmaddr & ~0x1FFFFFF`) + physBase。
+
+### 11.21 下一步
+
+1. 真机验证：同样去掉 `sweet-fbcon`，看 AppleCLCD 是否能点亮屏幕
+2. 给 fbcon 一个正确的修复（推迟到 pmap 就绪后），恢复文本控制台
+3. 根卷：`rd=none` 目前无根文件系统，需要 pinned 文件 + extent ADT
