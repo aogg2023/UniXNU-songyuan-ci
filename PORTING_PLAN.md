@@ -542,3 +542,48 @@ QEMU virt 里没有对应的 UART；帧缓冲控制台在 panic 前被显示驱�
 
 **内核已能在正确 MMU 配置下启动并进入 VM 初始化**，之后 panic；
 下一步是把内核日志接出来看 panic 原因。
+### 11.11 panic 文本已拿到（2026-10-25 晚）
+
+借助 HackiOS 项目的思路（`pe_kprintf` 挂 `loader_log_putc`），我们确认**自己的补丁集里本来就有日志环**：
+`bsd/dev/sweet_ufs.c` 的 `sweet_log_ring[4 MiB]` + `sweet_log_total`，由 `_cnputs()` 写入。
+dump 环缓冲（`0x51CA2948`，按 `total % SIZE` 旋转）后读到：
+
+```
+MACH Reboot
+```
+
+——只有 12 字节，说明内核在开 verbose 前就死了，**屏幕/串口注定拿不到信息**。
+
+### 11.12 用 gdbstub 逐层剥开 panic
+
+| 断点 | 读到的内容 | 含义 |
+|---|---|---|
+| `panic_trap_to_debugger` | va_list 里 `"Invalid kernel stack pointer (probable corruption)."` | 这是 **check_exception_stack** 抛的二次 panic |
+| 异常向量入口 `el1_sp1_synchronous_vector_long` | `SP = _excepstack+0x39f0`（合法异常栈），`LR = DebuggerTrapWithState+0x48` | 故障发生在 **panic/debugger 路径内部**，即二次故障 |
+| `_panic`（正确地址 `0xfffffff007a71e2c`） | `x0` = 通用 trap 格式串；`x3 = 0x9600004f604003c4` | 高 32 位 `0x9600004f` = **Data Abort 的 ESR**（EC=0x25），低 32 位是 PSTATE |
+| 同上 | `x1 = 0xfffffff007359e3c` → `vm_fault_internal+0x20` | 首次故障发生在 **`vm_fault_internal`** |
+
+**正确的根因链（三层）**：
+
+1. `vm_fault_internal` 里发生 Data Abort（ESR `0x9600004f`）
+2. 进入 trap 后的调试/打印路径再次出错 → 异常发生在 `DebuggerTrapWithState`
+3. `check_exception_stack` 判定栈异常 → panic `"Invalid kernel stack pointer"` → `halt_all_cpus`
+
+所以屏幕上看不到任何 panic 文本是**必然**的：真正的消息在第 1 层，而第 2 层就崩了。
+
+### 11.13 下一步（唯一正确入口）
+
+在 `fleh_dispatch64`（`0xfffffff00740b41c`）下断点——异常帧（ESR/FAR/ELR + x0..x30）是它的参数，
+dump 该帧即可拿到**第 1 次故障的 FAR/ELR**，也就是出错的确切地址。
+
+> 注意：QEMU 8.2 的 gdbstub **不暴露** AArch64 系统寄存器（`p $esr_el1` 返回 void），
+> 只能通过异常帧或 `-d int` 日志获取。
+
+### 11.14 从 HackiOS 项目得到的其它结论
+
+| 他们的做法 | 我们的对应 |
+|---|---|
+| `MACHINE_CONFIG=BCM2837`（XNU 原生 4K） | 我们用 `0199-songyuan-ios-va-layout.patch` 达到等效（切回 32 位前缀布局） |
+| Linux + stock clang + theos cctools，无需 Xcode | 与我们自建的 Linux 工具链一致，路线可复用 |
+| `qemu/where.py` + `sym.py` 在线符号化 | 可直接借用（我们目前用 nm + 手算） |
+| DPU / Adreno 660 / Wi-Fi 补丁 | 硅不同（840 vs 660），暂不移植，显示部分可参考 `docs/LEMONADE-DISPLAY.md` |
