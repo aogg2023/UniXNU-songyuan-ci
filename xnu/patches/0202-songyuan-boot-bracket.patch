@@ -1,14 +1,6 @@
 --- a/osfmk/kern/startup.c
 +++ b/osfmk/kern/startup.c
-@@ -421,6 +421,7 @@
- 
- void
- kernel_bootstrap(void)
-+#if 1
- {
- 	kern_return_t   result;
- 	thread_t        thread;
-@@ -430,6 +431,7 @@
+@@ -430,6 +430,7 @@
  
  	scale_setup();
  
@@ -16,7 +8,7 @@
  	kernel_bootstrap_log("vm_mem_bootstrap");
  	vm_mem_bootstrap();
  
-@@ -751,7 +753,9 @@
+@@ -751,7 +752,9 @@
  	load_static_trust_cache();
  #endif
  
@@ -26,7 +18,7 @@
  
  	/*
  	 * Get rid of segments used to bootstrap kext loading. This removes
-@@ -794,7 +798,9 @@
+@@ -794,7 +797,9 @@
  	 *	Start the user bootstrap.
  	 */
  #ifdef  MACH_BSD
