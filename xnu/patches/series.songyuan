@@ -216,10 +216,10 @@
 0199b-songyuan-klog.patch
 0200-songyuan-root-diag.patch
 0201-songyuan-bsdinit-verbose.patch
-0202-songyuan-boot-bracket.patch
 0203-songyuan-startup-verbose.patch
 0204-songyuan-init-errno.patch
-0205-songyuan-fbcon-late.patch
 0206-songyuan-console-to-fbcon.patch
 0208-songyuan-apfs-wiring.patch
 0207-songyuan-apfs-files.patch
+0207-songyuan-apfs-files.patch
+0209-songyuan-apfs-readonly.patch
