@@ -1,0 +1,85 @@
+--- a/pexpert/arm/pe_serial.c
++++ b/pexpert/arm/pe_serial.c
+@@ -719,6 +719,7 @@
+ 
+ static volatile uint32_t *fbcon_base;
+ static uint32_t fbcon_width, fbcon_height, fbcon_stride;
++static uint64_t fbcon_pa, fbcon_sz;   /* songyuan: 延迟映射用 */
+ static uint32_t fbcon_cols, fbcon_rows, fbcon_col, fbcon_row;
+ #if defined(FUXI)
+ static volatile uint32_t *fuxi_ctl0, *fuxi_intf1;
+@@ -858,7 +859,9 @@
+ 		return;
+ 	}
+ 	sweet_early_mark(17, "fbcon config read; mapping");
+-	fbcon_base = (volatile uint32_t *)ml_io_map_wcomb(reg[0], reg[1]);
++	fbcon_pa = reg[0];
++	fbcon_sz = reg[1];
++	fbcon_base = NULL;   /* songyuan: pmap 未就绪，延迟到 bsd_init 前映射 */
+ 	sweet_early_mark(18, "fbcon mapping returned");
+ #if defined(FUXI)
+ #if !defined(PANDORA)
+@@ -869,9 +872,7 @@
+      * the 17 Pro panel refreshes by itself (measured by shim/hello), so no kick:
+      * fuxi_display_kick() returns early while fuxi_intf1 is NULL. */
+ #endif
+-    if (fbcon_base != NULL) {
+-		register_serial_functions(&sweet_fbcon_serial_functions);
+-	}
++    register_serial_functions(&sweet_fbcon_serial_functions);   /* songyuan: 先注册，绘制等映射 */
+ }
+ 
+ /*****************************************************************************/
+@@ -1034,7 +1035,9 @@
+ 		return;
+ 	}
+ 	sweet_early_mark(17, "fbcon config read; mapping");
+-	fbcon_base = (volatile uint32_t *)ml_io_map_wcomb(reg[0], reg[1]);
++	fbcon_pa = reg[0];
++	fbcon_sz = reg[1];
++	fbcon_base = NULL;   /* songyuan: pmap 未就绪，延迟到 bsd_init 前映射 */
+ 	sweet_early_mark(18, "fbcon mapping returned");
+ #if defined(FUXI)
+ #if !defined(PANDORA)
+@@ -1045,9 +1048,7 @@
+      * the 17 Pro panel refreshes by itself (measured by shim/hello), so no kick:
+      * fuxi_display_kick() returns early while fuxi_intf1 is NULL. */
+ #endif
+-    if (fbcon_base != NULL) {
+-		register_serial_functions(&sweet_fbcon_serial_functions);
+-	}
++    register_serial_functions(&sweet_fbcon_serial_functions);   /* songyuan: 先注册，绘制等映射 */
+ }
+ 
+ #if HIBERNATION
+@@ -1544,3 +1545,19 @@
+ 	}
+ #endif /* APPLE_UART */
+ }
++
++/* songyuan: pmap 就绪后再映射帧缓冲（bsd_init 之前调用） */
++void sweet_fbcon_late_init(void);
++
++void
++sweet_fbcon_late_init(void)
++{
++	if (fbcon_base != NULL || fbcon_pa == 0) {
++		return;
++	}
++	fbcon_base = (volatile uint32_t *)ml_io_map_wcomb(fbcon_pa, fbcon_sz);
++	if (fbcon_base != NULL) {
++		fbcon_init();
++		sweet_early_mark(19, "fbcon late mapping ok");
++	}
++}
+--- a/osfmk/kern/startup.c
++++ b/osfmk/kern/startup.c
+@@ -809,6 +809,8 @@
+ 	 *	Start the user bootstrap.
+ 	 */
+ #ifdef  MACH_BSD
++	extern void sweet_fbcon_late_init(void);
++	sweet_fbcon_late_init();
+ 	printf("SONGYUAN boot: calling bsd_init\n");
+ 	bsd_init();
+ 	printf("SONGYUAN boot: bsd_init returned\n");

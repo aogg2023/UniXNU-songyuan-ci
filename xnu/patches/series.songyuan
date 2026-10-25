@@ -219,3 +219,4 @@
 0202-songyuan-boot-bracket.patch
 0203-songyuan-startup-verbose.patch
 0204-songyuan-init-errno.patch
+0205-songyuan-fbcon-late.patch
