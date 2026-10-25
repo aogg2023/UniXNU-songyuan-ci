@@ -885,3 +885,41 @@ loader → XNU → VM → IOKit → AMFI → KeyStore → 平台专家 → Apple
 
 **今天最重要的一条教训**：遇到问题先翻用户给的项目。`LC_MAIN` 那个坑
 就是靠对比 `oosexgang/hackios-xnu-userland` 的 `prebuilt/userland/hello` 才发现的。
+### 11.28 APFS 移植成功（2026-10-25 22:10）★★
+
+**从 `oosexgang/hackios-xnu-kernel` 移植了完整的只读 APFS 驱动**，并在 QEMU 里端到端验证：
+
+```
+apfs: volume 0 "root" of container 0 (at 0 MB): 1 files, 1 directories, 10 blocks of 4096 used
+SONGYUAN root: vfs_mountroot OK
+SONGYUAN init: /sbin/launchd -> errno 0
+PC = 0x0000000100003fb4      ← 用户态
+```
+
+**移植内容**：
+
+| 补丁 | 内容 |
+|---|---|
+| `0207-songyuan-apfs-files.patch` | 31 个源文件（apfs_*.c/h + libdeflate + libzbitmap），521 KB |
+| `0208-songyuan-apfs-wiring.patch` | `config/MASTER` 的 `options APFS`、机器配置 `options apfs`、`bsd/conf/files` 5 条、`vfs_conf.c` 挂载表项（z 在 mockfs 之前，才能抢到根卷）、`Makefile.arm64` 的 libdeflate 头路径 |
+| `0209-songyuan-apfs-readonly.patch` | 去掉 `redwood_input.h`/`redwood_virtio_blk.h` 依赖、去掉 redwood_memory sysctl、补齐他们改动 thread.c 才有的 `thread_runnable_and_run_self()` |
+
+**只读模式**：只编 `apfs_deflate/zbitmap/lib/vfsops/vnops` 五个文件，
+不编 `apfs_write.c`/`apfs_store.c`（那是他们的写入特性，依赖 redwood 块设备层）。
+
+**踩坑记录**：
+
+1. `options APFS` 只写在 `config/MASTER` **不够**——必须在机器配置
+   `MASTER.arm64.songyuan` 里也写 `options apfs`，否则 `optional apfs` 的文件不参与编译
+   （症状：能链接但内核里没有 apfs 符号，也没有 `opt_apfs.h`）
+2. 挂载表项必须插在 **`&mockfs_vfsops` 之前**（mockfs 接受任何根设备，
+   在它后面就永远轮不到 apfs）
+3. xnu 官方 config 的 `optional` 匹配对大小写不敏感，但**机器配置里写小写更保险**
+4. 他们的 APFS 依赖 `osfmk/kern/thread.c` 的一处改动 → 提供空实现即可
+
+**方法论**：这轮能这么快，靠的是
+- **CI 产物里加 `build-errors.txt`**（编译错误、未定义符号、末尾日志），几秒就能拿到，不用下 29 MB 日志
+- `xnu-buildtree`（23 MB）可用来确认补丁是否真的应用、配置是否生效
+
+**下一步**：用 IPSW（已完整下载 6.17 GB）里的 `096-04088-077.dmg`（4.4 GB，APFS）
+提取真正的 iOS 根文件系统，用 `mkapfs.py` 打成镜像，跑真正的 `launchd`。
