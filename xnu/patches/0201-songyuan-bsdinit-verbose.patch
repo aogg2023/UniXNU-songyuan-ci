@@ -1,0 +1,12 @@
+--- a/bsd/kern/bsd_init.c
++++ b/bsd/kern/bsd_init.c
+@@ -490,7 +490,8 @@
+ 	platform_stall_panic_or_spin(PLATFORM_STALL_XNU_LOCATION_BSD_INIT);
+ #endif
+ 
+-#if defined(FUXI)
++#if defined(FUXI) || defined(SONGYUAN)
++/* songyuan: 打开 bsd_init 的进度日志，便于定位根卷挂载前的停顿 */
+ #define DEBUG_BSDINIT 1
+ #else
+ #define DEBUG_BSDINIT 0
