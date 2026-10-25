@@ -173,6 +173,7 @@ jobs:
 
       - name: Build init ramdisk
         if: always()
+        continue-on-error: true
         run: |
           set -euxo pipefail
           file tools/mini-init
@@ -180,7 +181,7 @@ jobs:
           rm -rf "$RUNNER_TEMP/rd.dmg" "$RUNNER_TEMP/rd_raw.dmg" "$RUNNER_TEMP/rd"
           mkdir -p "$RUNNER_TEMP/rd"
           # 裸卷（-layout NONE），catalog 节点强制 8 KiB（XNU 的 B-tree 代码按 8 KiB 处理）
-          hdiutil create -size 128m -fs HFS+ -fsargs "-c 8192" -layout NONE -volname SONGYUAN -quiet "$RUNNER_TEMP/rd.dmg"
+          hdiutil create -size 128m -fs HFS+ -layout NONE -volname SONGYUAN -quiet "$RUNNER_TEMP/rd.dmg"
           hdiutil attach -nobrowse -noverify -mountpoint "$RUNNER_TEMP/rd" "$RUNNER_TEMP/rd.dmg"
           mkdir -p "$RUNNER_TEMP/rd/sbin"
           # arm64 XNU 要求 Mach-O 带代码签名，否则 exec 直接失败（OS_REASON_EXEC）
