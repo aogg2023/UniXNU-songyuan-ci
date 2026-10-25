@@ -218,3 +218,4 @@
 0201-songyuan-bsdinit-verbose.patch
 0202-songyuan-boot-bracket.patch
 0203-songyuan-startup-verbose.patch
+0204-songyuan-init-errno.patch

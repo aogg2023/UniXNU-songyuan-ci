@@ -1,0 +1,11 @@
+--- a/bsd/kern/kern_exec.c
++++ b/bsd/kern/kern_exec.c
+@@ -7067,6 +7067,8 @@
+ 	for (i = 0; i < sizeof(init_programs) / sizeof(init_programs[0]); i++) {
+ 		printf("load_init_program: attempting to load %s\n", init_programs[i]);
+ 		error = load_init_program_at_path(p, (user_addr_t)scratch_addr, init_programs[i]);
++		/* songyuan: 无条件打印，拿到确切的 errno（ENOENT 也要看） */
++		printf("SONGYUAN init: %s -> errno %d\n", init_programs[i], error);
+ 		if (!error) {
+ 			return;
+ 		} else if (error != ENOENT) {
