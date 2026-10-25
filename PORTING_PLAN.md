@@ -238,3 +238,49 @@ LLVM 24 收紧了对 `void *` 解引用的检查。
 - **不需要 macOS** 这一点已被实证：工具链、installhdrs、firehose、libcc_kext 全部在 Linux 上跑通
 - 剩下的是 clang 版本兼容的长尾，与 UniXNU 当年遇到的是同一类问题
 - CI 路线仍然更快（`macos-14` runner + 已就绪的 196 补丁序列）
+---
+
+## 9. CI 构建成功（2026-10-25，首个可运行内核）
+
+仓库：`https://github.com/aogg2023/UniXNU-songyuan`（私有）
+Run：**#1**，`success`，耗时 **4.4 分钟**（macos-14 / M 系列多核）
+
+### 9.1 产物
+
+| 文件 | 大小 | SHA256 |
+|---|---|---|
+| `kernel.development.songyuan` | 16.19 MB | `b9dab0407714b5253cfc0bc531f2ff17419e079ed80d2aee0a44045baf65596f` |
+| `xnu-buildtree` artifact | 22.7 MB | 含 fakeroot 头与打过补丁的源树 |
+| `xnu-objects` artifact | 50.4 MB | 全部 .o + 链接脚本（供 `wsl/local_relink.sh` 用） |
+
+### 9.2 内核身份验证
+
+| 检查 | 结果 |
+|---|---|
+| 文件类型 | `Mach-O 64-bit arm64 executable, flags:<NOUNDEFS\|PIE>` |
+| 版本串 | `Darwin Kernel Version 22.6.0 … xnu-8796.141.3` |
+| 符号总数 | 71,531 |
+| `_bsd_init` / `_kernproc` / `_pmap_bootstrap` | 存在（非桩） |
+| `__TEXT` vmaddr | **`0xfffffe0007004000`** |
+| 补丁痕迹 | `sweet_hfs` 17 处、`pandora_gpu` 35 处、`songyuan` 243 处 |
+
+**4 KiB 页的直接证据**：4K 内核基址是 `0xfffffe0007004000`，
+16K 内核会是 `0xfffffff007004000`。我们落在前者。
+
+### 9.3 这一步证明了什么
+
+- 196 个补丁在真实 macOS 工具链下**全部应用且编译通过**（`error:` 行数为 0）
+- `0103-songyuan-machine-config-4k.patch` 生效：`SONGYUAN` 在日志出现 **59,813 次**
+- `MACHINE_CONFIG=SONGYUAN` 走通 `makedefs` → `MASTER.arm64.songyuan` → 4K 页路径
+
+### 9.4 CI 里发现并修掉的坑
+
+`xnu.yml` 原本用 `cp xnu/patches/*.patch dxb/patches/`，而 blacktop 的 `build.sh`
+会**全量应用**该目录下的补丁 → `0102`(pandora) 与 `0103`(songyuan) 改同一批行，必然冲突。
+已改为按 `series.songyuan` 清单逐个复制，并加 `test "$n" -ge 190` 兜底。
+
+### 9.5 下一步
+
+1. 生成 ADT：`python3 tools/mkadt_songyuan.py out.adt`（DRAM 窗口仍是假设值）
+2. 准备 payload / 引导链（参考 `tools/boot_ios.sh` 与 `wsl/` 的 shim 做法）
+3. 真机 `fastboot boot` 验证内核能否跑到 `bsd_init`
