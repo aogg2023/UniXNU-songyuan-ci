@@ -149,6 +149,10 @@ jobs:
         run: |
           mkdir -p out
           cp -R dxb/fakeroot/System/Library/Kernels/. out/ 2>/dev/null || true
+          # 只保留内核文件：.link 目录占 42 MB，本地调试用不到
+          rm -rf out/kernel.*.link
+          # 压缩内核：16 MB Mach-O 压完约 4-5 MB，下载时间从十几分钟降到几十秒
+          for f in out/kernel.development.*; do [ -f "$f" ] && gzip -9 -k "$f"; done || true
           ls -la out
           (cd out && shasum -a 256 kernel.* > SHA256SUMS) || true
 
@@ -157,4 +161,12 @@ jobs:
         with:
           name: xnu-kernel
           path: out/
+          if-no-files-found: warn
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          # 只有压缩后的内核（约 5 MB）：本地调试下这个，不要下 xnu-kernel
+          name: xnu-kernel-gz
+          path: out/kernel.*.gz
           if-no-files-found: warn

@@ -212,3 +212,4 @@
 0198-pandora-gpu-dcvs2.patch
 0103-songyuan-machine-config-4k.patch
 0103b-songyuan-diag-regs.patch
+0103c-songyuan-ios-va-layout.patch
