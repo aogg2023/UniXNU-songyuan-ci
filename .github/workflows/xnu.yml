@@ -43,7 +43,17 @@ jobs:
           git -C dxb fetch -q --depth 1 "$DXB_REPO" "$DXB_SHA"
           git -C dxb checkout -q FETCH_HEAD
           # 12.5-14.3 use the top-level patches dir; ours go next to blacktop's
-          cp xnu/patches/*.patch xnu/patches/*.sh dxb/patches/
+            # 按 series.songyuan 清单复制：blacktop 的 build.sh 会全量应用 *.patch，
+            # 而 0102(pandora)/0124(pandora) 与我们 0103(songyuan) 改同一批行，必须排除。
+            mkdir -p dxb/patches
+            n=0
+            while IFS= read -r f; do
+            case "$f" in ''|'#'*) continue ;; esac
+            cp "xnu/patches/$f" dxb/patches/ && n=$((n+1))
+            done < xnu/patches/series.songyuan
+            cp xnu/patches/*.sh dxb/patches/
+            echo "copied $n patches from series.songyuan"
+            test "$n" -ge 190 || { echo "series too short"; exit 1; }
           # The staging scripts only run for SWEET; FUXI and PANDORA use the same staged sources
           sed -i '' 's/\[\[ "${MACHINE_CONFIG:-}" == SWEET \]\]/[[ "${MACHINE_CONFIG:-}" =~ ^(SWEET|FUXI|PANDORA|SONGYUAN)$ ]]/' dxb/patches/*.sh
           grep -h 'MACHINE_CONFIG:-' dxb/patches/*.sh
