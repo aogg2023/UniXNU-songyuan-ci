@@ -2,17 +2,14 @@
 #
 # 基线：xnu-8796.141.3（Darwin 22.6.0）
 # 实测（2026-10-25）：在 Linux 上模拟 HFS staging 后顺序应用，196 个全部干净通过。
-#
 # 与 data-a-live/pandora 的差异只有两处：
 #   - 剔除 0102-pandora-machine-config-4k.patch（注册 PANDORA 机型）
 #   - 剔除 0124-pandora-native-4k-cs-hash-cache-on.patch（给 PANDORA 加编译开关）
 #     这两者由 0103-songyuan-machine-config-4k.patch 一次性取代：
 #     它注册 SONGYUAN 机型，并保留 -DPANDORA=1 以复用已调好的代码路径，
 #     同时并入 -DXNU_NATIVE_CS_HASH_CACHE=1。
-#
 # 注意：0031 / 0041 依赖 0026-stage-hfs.sh 先把 Apple HFS 铺到 bsd/sweet_hfs/，
 # 该脚本要求 MACHINE_CONFIG ∈ {SWEET,FUXI,PANDORA,SONGYUAN} 且 macOS 13.5。
-#
 # 共 196 个
 
 0001-new-clang-drop-removed-auto-var-init-flag.patch
@@ -220,6 +217,5 @@
 0204-songyuan-init-errno.patch
 0206-songyuan-console-to-fbcon.patch
 0208-songyuan-apfs-wiring.patch
-0207-songyuan-apfs-files.patch
 0207-songyuan-apfs-files.patch
 0209-songyuan-apfs-readonly.patch
