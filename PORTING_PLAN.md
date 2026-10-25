@@ -739,3 +739,61 @@ static long sys_write(int fd, const void *b, unsigned long n) {
 	return x0;
 }
 ```
+### 11.23 根卷挂载成功；init exec 被杀（2026-10-25 20:00）
+
+**已完成**：
+
+```
+SONGYUAN root: IOFindBSDRoot err=0 flags=0x0 rootdev=0x1000000 name='md0'
+hfs: mounted SONGYUAN on device b(1, 0)
+SONGYUAN root: vfs_mountroot OK
+bsd_init: done
+load_init_program: attempting to load /sbin/launchd
+```
+
+`bsd_init` 的 34 步全部走完，HFS+ ramdisk 正确挂载为根卷。
+
+**当前阻塞**（panic 原文，取自 `songyuan_log_buf`）：
+
+```
+panic(cpu 0 caller 0xfffffff007acacd0): unexpected SIGKILL of init
+  with reason -- namespace 9 code 0x1 description none
+```
+
+- `namespace 9` = `OS_REASON_EXEC`，`code 0x1` = exec 失败
+- `/usr/appleinternal/sbin/launchd.development` → `errno 2`（ENOENT，正常）
+- `/sbin/launchd` → **exec 未返回**，进程在 exec 内部被杀
+- ad-hoc `codesign` 后依旧；`cs_enforcement_disable=1 amfi_get_out_of_my_way=1` 依旧
+
+**已排除**：
+
+| 假设 | 结论 |
+|---|---|
+| HFS+ catalog 节点大小 4 KiB 不被支持 | ❌ 驱动只拒绝 512，其它从头部读（`BTree.c:261`） |
+| 文件不在卷里 | ❌ catalog 有 `sbin`/`launchd`，Mach-O 数据在镜内 |
+| 缺 `LC_MAIN` | ✅ 已修（`entryoff=0x3F9C`） |
+| 缺代码签名 | ✅ 已加 ad-hoc 签名，仍失败 → 不是唯一原因 |
+
+**下一步候选**：
+
+1. 在 `exec_mach_imgact` / `load_machfile` 的失败分支加无条件 `printf`，
+   看是哪一步拒绝（`EBADARCH`/`EBADEXEC`/`CS_` 相关）
+2. 试**动态链接**二进制：加 `LC_LOAD_DYLINKER` + 在卷里放 `/usr/lib/dyld`
+   （iOS arm64 的正常路径就是 dyld 启动）
+3. 检查 `SWEET AMFI` 是否把非平台二进制直接判死
+
+### 11.24 本轮方法论收获（重要）
+
+| 教训 | 说明 |
+|---|---|
+| **内核有两条输出通路** | `printf` → `_cnputs` → 日志环（可读）；`kprintf` → 串口（QEMU 里不可见）。诊断必须用 `printf` |
+| **`IORTC` 会等 30 秒** | `IOKitInitializeTime` 里 `waitForService("IORTC")` 超时 30 s；观察窗口必须 > 40 s，否则永远看到"卡死" |
+| **panic 文本可从两个地方拿** | 日志环（printf 类消息）与 `songyuan_log_buf`（kprintf 捕获，5199 字节容量，含完整 panic + 栈回溯） |
+| **不要把 assert 当探针** | CI 里 `assert` 失败 = 构建失败，数值就拿不到了；应写进小文件当产物 |
+
+`songyuan_log_buf` 的定位方法（每次内核变化都要重算）：
+
+```sh
+nm -n kernel | grep songyuan_log
+# PA = VA - (__TEXT.vmaddr & ~0x1FFFFFF) + physBase
+```
