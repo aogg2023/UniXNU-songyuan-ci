@@ -1,0 +1,101 @@
+--- a/config/MASTER
++++ b/config/MASTER
+@@ -108,6 +108,7 @@
+ options		CONFIG_IMAGEBOOT_CHUNKLIST	# authenticate image with a chunk list	# <config_imageboot_chunklist>
+ 
+ options		CONFIG_WORKLOOP_DEBUG	# <config_workloop_debug>
++options		APFS		# Apple File System, read only	# <apfs>
+ 
+ #
+ #	4.4 filesystems
+--- a/bsd/conf/files
++++ b/bsd/conf/files
+@@ -174,6 +174,13 @@
+ bsd/miscfs/devfs/devfs_tree.c		optional devfs
+ bsd/miscfs/devfs/devfs_vnops.c		optional devfs
+ bsd/miscfs/devfs/devfs_vfsops.c		optional devfs
++bsd/miscfs/apfs/apfs_deflate.c		optional apfs
++bsd/miscfs/apfs/apfs_zbitmap.c		optional apfs
++bsd/miscfs/apfs/apfs_lib.c		optional apfs
++bsd/miscfs/apfs/apfs_write.c		optional apfs
++bsd/miscfs/apfs/apfs_store.c		optional apfs
++bsd/miscfs/apfs/apfs_vfsops.c		optional apfs
++bsd/miscfs/apfs/apfs_vnops.c		optional apfs
+ 
+ bsd/miscfs/mockfs/mockfs_fsnode.c	optional mockfs
+ bsd/miscfs/mockfs/mockfs_vfsops.c	optional mockfs
+--- a/bsd/vfs/vfs_conf.c
++++ b/bsd/vfs/vfs_conf.c
+@@ -98,8 +98,32 @@
+ extern  struct vfsops nullfs_vfsops;
+ extern struct vfsops bindfs_vfsops;
+ 
++#if APFS
++	/* Apple File System, read only（APFS 镜像作根卷） */
++	{
++		.vfc_vfsops = &apfs_vfsops,
++		.vfc_name = "apfs",
++		.vfc_typenum = FT_APFS,
++		.vfc_refcount = 0,
++		.vfc_flags = MNT_LOCAL | MNT_RDONLY,
++		.vfc_mountroot = apfs_mountroot,
++		.vfc_next = NULL,
++		.vfc_reserved1 = 0,
++		.vfc_reserved2 = 0,
++		.vfc_vfsflags = VFC_VFSGENERICARGS | VFC_VFS64BITREADY | VFC_VFSNATIVEXATTR,
++		.vfc_descptr = NULL,
++		.vfc_descsize = 0,
++		.vfc_sysctl = NULL
++	},
++#endif /* APFS */
++
+ #if MOCKFS
+ extern  struct vfsops mockfs_vfsops;
++
++#if APFS
++extern  struct vfsops apfs_vfsops;
++extern  int apfs_mountroot(mount_t, vnode_t, vfs_context_t);
++#endif /* APFS */
+ extern  int mockfs_mountroot(mount_t, vnode_t, vfs_context_t);
+ #endif /* MOCKFS */
+ 
+@@ -110,7 +134,8 @@
+ 	FT_ROUTEFS = 21,
+ 	FT_NULLFS = 22,
+ 	FT_BINDFS = 23,
+-	FT_MOCKFS  = 0x6D6F636B
++	FT_MOCKFS  = 0x6D6F636B,
++	FT_APFS    = 0x61706673
+ };
+ 
+ int fstypenumstart = FT_BINDFS + 1;
+@@ -292,6 +317,10 @@
+ #if FDESC
+ extern struct vnodeopv_desc devfs_devfd_vnodeop_opv_desc;
+ extern const struct vnodeopv_desc devfs_fdesc_vnodeop_opv_desc;
++
++#if APFS
++extern const struct vnodeopv_desc apfs_vnodeop_opv_desc;
++#endif /* APFS */
+ #endif /* FDESC */
+ 
+ #if MOCKFS
+@@ -302,6 +331,9 @@
+ extern const struct vnodeopv_desc bindfs_vnodeop_opv_desc;
+ 
+ const struct vnodeopv_desc *vfs_opv_descs[] = {
++#if APFS
++	&apfs_vnodeop_opv_desc,
++#endif /* APFS */
+ 	&dead_vnodeop_opv_desc,
+ #if FIFO && SOCKETS
+ 	&fifo_vnodeop_opv_desc,
+--- a/bsd/conf/Makefile.arm64
++++ b/bsd/conf/Makefile.arm64
+@@ -11,3 +11,6 @@
+ ######################################################################
+ #END    Machine dependent Makefile fragment for arm
+ ######################################################################
++
++# libdeflate 的 arm 头会包含编译器自带的 <arm_acle.h>
++apfs_deflate.o_CFLAGS_ADD += -idirafter $(shell $(CC) -print-resource-dir)/include

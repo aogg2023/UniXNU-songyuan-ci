@@ -221,3 +221,5 @@
 0204-songyuan-init-errno.patch
 0205-songyuan-fbcon-late.patch
 0206-songyuan-console-to-fbcon.patch
+0208-songyuan-apfs-wiring.patch
+0207-songyuan-apfs-files.patch
