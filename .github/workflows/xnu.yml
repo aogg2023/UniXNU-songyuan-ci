@@ -180,7 +180,7 @@ jobs:
           mkdir -p out
           rm -rf "$RUNNER_TEMP/rd.dmg" "$RUNNER_TEMP/rd_raw.dmg"
           # 裸卷（-layout NONE）+ catalog 节点 8 KiB（-c 8192）：XNU 的 HFS 驱动要 8 KiB
-          hdiutil create -size 32m -fs HFS+ -fsargs "-c 8192" -layout NONE -volname SONGYUAN -quiet "$RUNNER_TEMP/rd.dmg"
+          hdiutil create -size 128m -fs HFS+ -fsargs "-c 8192" -layout NONE -volname SONGYUAN -quiet "$RUNNER_TEMP/rd.dmg"
           mkdir -p "$RUNNER_TEMP/rd"
           hdiutil attach -nobrowse -noverify -mountpoint "$RUNNER_TEMP/rd" "$RUNNER_TEMP/rd.dmg"
           mkdir -p "$RUNNER_TEMP/rd/sbin"
