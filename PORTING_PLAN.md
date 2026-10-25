@@ -797,3 +797,36 @@ panic(cpu 0 caller 0xfffffff007acacd0): unexpected SIGKILL of init
 nm -n kernel | grep songyuan_log
 # PA = VA - (__TEXT.vmaddr & ~0x1FFFFFF) + physBase
 ```
+### 11.25 突破：进程 1 跑起来了（2026-10-25 20:00）
+
+**根因是我自己引入的 bug**：`mini-init` 里被手工插入了一个 `LC_MAIN`，
+而 ld64 `-static` 本来就会生成 `LC_UNIXTHREAD`（入口点一直在）。
+两者并存 → XNU 的 exec 把进程杀掉（`OS_REASON_EXEC`）。
+
+**怎么找到的**：没有继续猜，而是去翻了用户给的 `oosexgang/hackios-xnu-userland`。
+他们 `prebuilt/userland/hello` 是**能跑的静态 init**，用 `otool -l` 对比 load commands：
+
+| | 他们的 hello（能跑） | 我们（失败） |
+|---|---|---|
+| `LC_UNIXTHREAD` | ✅ | ✅ |
+| `LC_MAIN` | ❌ 无 | ⚠️ 手工加的 |
+
+去掉 `LC_MAIN` 后，立刻：
+
+```
+SONGYUAN init: /sbin/launchd -> errno 0          ← exec 成功
+PC = 0x0000000100003fb4                          ← 用户态地址（_start+0x18）
+X0 = 9                                           ← open("/dev/console") 的 fd
+（无 panic）
+```
+
+**进程 1 正在执行我们自己的用户态程序，并常驻运行。**
+
+**当前遗留**：用户态的 `write()` 输出还没能被我们观测到（`/dev/console` 落到
+串口/视频控制台，而我们在 ADT 里去掉了 `sweet-fbcon`）。下一步要把 fbcon
+改成 pmap 就绪后再初始化，用户态输出就能直接显示在屏幕上。
+
+**教训（写下来避免重犯）**：
+
+> 遇到问题先翻用户给的项目。这次如果先对比他们的 prebuilt 二进制，
+> 会早好几个小时发现 `LC_MAIN` 这个自造的问题。
