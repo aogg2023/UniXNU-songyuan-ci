@@ -436,3 +436,81 @@ KVA L1[1] → L2@0x5118b000  项 0..46      (0x8A000000..0x8FC00000)
 
 修法：把条件改成 `#if defined(SWEET) && !defined(FUXI) && !defined(SONGYUAN)`，
 或把地址/几何改成从 `boot_args.Video` 读（更正确，但 MMU 未开时需用物理地址）。
+---
+
+## 11. 根因与修复：KVA 不可译（2026-10-25）
+
+### 11.1 症状
+
+内核跳到 `arm_init` 即 Prefetch Abort（`DFSC=0x4`，第 0 级翻译错误），
+随后在异常向量处自循环。真机与 QEMU 表现一致。
+
+### 11.2 定位过程（每一步都有可复现的证据）
+
+| 步骤 | 结论 |
+|---|---|
+| 物理内存 dump | `arm_init` 的代码在物理内存里是正确的，排除段拷贝问题 |
+| bootstrap 页表 dump（QMP `pmemsave`） | KVA `L2[61] = 0x51A00601` 覆盖 `arm_init` 的 PA，**映射存在**，排除"没映射" |
+| 内核内 diag（写魔数+寄存器到 boot_args 页） | 第一次 Data Abort：`FAR = boot_args VA`、`ELR` 是**物理地址** → 说明在 V=P 窗口写入 KVA 失败 |
+| 读回 `TCR_EL1 = 0x22a51a251a` | `T1SZ=26`（38 位 VA），而内核链在 `0xfffffe00_...`（**41 位**） |
+
+**关键计算**：`0xfffffe00_089c96f0 >> 38 = 0x3FFFFF8 ≠ 0x3FFFFFF` → 该地址不可能被翻译。
+
+### 11.3 根因
+
+`makedefs/MakeInc.def`：
+
+```make
+ifneq ($(filter $(PLATFORM),MacOSX),)
+ifeq ($(filter PANDORA,$(CURRENT_MACHINE_CONFIG)),)   # 只豁免了 PANDORA
+LARGE_MEMORY_DEFINE=-DARM_LARGE_MEMORY=1
+ARM64_LINK_ADDR    =0xfffffe0007004000                 # 41 位布局
+endif
+endif
+```
+
+SONGYUAN 继承了 `ARM_LARGE_MEMORY`，内核链到 `0xfffffe00_07004000`，
+而 `TCR_EL1_BOOT` 的 `T1SZ_BOOT` 在 4 KiB 配置下是 26（38 位）——
+**"4K 页 + ARM_LARGE_MEMORY" 这个组合 XNU 不支持**（`proc_reg.h` 注释：
+4K 满页 L1 是 39 位、子页 L1 是 38 位）。
+
+pandora 之所以没踩到：它的参考内核入口是 `0xfffffff0_07406488`（32 位前缀），
+本来就落在 38 位范围内。
+
+### 11.4 修复
+
+`0199-songyuan-ios-va-layout.patch`：把 SONGYUAN 加入豁免名单。
+
+```make
+ifeq ($(filter PANDORA SONGYUAN,$(CURRENT_MACHINE_CONFIG)),)
+```
+
+> 必须让这个补丁**排在所有补丁之后**（命名 `0199-`）：数据里有另一个补丁会
+> 整体重写 `MakeInc.def`，早期应用会被覆盖/冲突。已验证 CI 顺序下 198/198 全部干净应用。
+
+### 11.5 修复后的实测
+
+| 项 | 值 |
+|---|---|
+| `__TEXT` vmaddr | `0xfffffff007004000`（iOS 布局） |
+| diag 魔数 | `0x534f4e4759554e01` 写入成功（代码执行到） |
+| `TTBR0_EL1` / `TTBR1_EL1` | `0x51186000` / `0x51187000` |
+| `TCR_EL1` | `T0SZ=26 T1SZ=26 TG0=0(4K) TG1=2(4K)` |
+| `SCTLR_EL1.M` | 1（MMU 开） |
+| `ID_AA64MMFR0_EL1` | `0x1124`（TGran16=0，PARange=44 位） |
+| 真机 | **内核控制台打印了启动日志**，随后切到黑屏 + 底部蓝条 |
+| QEMU | 复现同一画面，PC 停在 `_halt_all_cpus + 0x34` |
+
+### 11.6 顺带修掉的 QEMU 陷阱
+
+`qemu_loader.py` 默认 `-cpu cortex-a76`（ARMv8.0 级别），
+不支持我们用 `-march=armv8.2-a+crypto` 编出的 LSE 原子指令，
+会产生**假的 `Undefined Instruction`**（`_lck_grp_reference` 等）。
+**必须用 `-cpu max`**，否则诊断会被误导。
+
+### 11.7 下一步
+
+1. 拿到那屏内核日志的内容（真机抢拍 / 连拍 / 慢动作）
+2. 或在 QEMU 里让内核控制台走 PL011，这样 `serial.txt` 就能直接拿到 panic 文本
+   （`sweet_early` 已有输出钩子，加一个 QEMU 目标即可）
+3. 栈回溯需要按段分别换算 PA（内核栈不在线性映射区），或直接用 gdbstub
