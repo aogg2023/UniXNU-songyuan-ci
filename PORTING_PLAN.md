@@ -284,3 +284,75 @@ Run：**#1**，`success`，耗时 **4.4 分钟**（macos-14 / M 系列多核）
 1. 生成 ADT：`python3 tools/mkadt_songyuan.py out.adt`（DRAM 窗口仍是假设值）
 2. 准备 payload / 引导链（参考 `tools/boot_ios.sh` 与 `wsl/` 的 shim 做法）
 3. 真机 `fastboot boot` 验证内核能否跑到 `bsd_init`
+---
+
+## 10. 首次真机引导 XNU（2026-10-25）
+
+### 10.1 引导链已全部打通
+
+| 环节 | 结果 |
+|---|---|
+| ADT 生成（`tools/mkadt_songyuan.py`） | 18,976 字节，`compatible` 含 `xiaomi,songyuan` |
+| payload 打包（`mkpayload.py`） | 16,373,792 字节，段表正确 |
+| loader 编译（`shim/loader`，Linux clang） | 16.4 MB boot.img，header v4 |
+| **真机 `fastboot boot`** | **loader 全部安检通过并跳入内核** |
+
+真机屏幕实测（loader 自检结果）：
+
+```
+LEVEL     EL1
+LOADED    0x00000000C7800000
+PAYLOAD   0x00000000C780B000
+PHYS      0x00000008C0000000      ← 我们的 DRAM 假设，被真正使用
+MEMSIZE   0x000000013FF00000
+ENTRY     0xFFFFFE000741E488      ← 4 KiB 内核入口
+KERN_END  0x00000008C29C4000
+BOOTARGS  0x00000008C29C9000
+JUMP      0x00000008C141E488
+XNU       jumping (the kernel console takes over)
+```
+
+**结论：引导链（ADT→payload→loader→跳转）完全正确，DRAM 窗口假设成立。**
+
+### 10.2 内核卡点：`_arm_init` 取指异常
+
+QEMU 复现（`tools/qemu_loader.py` + 串口补丁）给出确切位置：
+
+```
+Prefetch Abort, ESR 0x86000004 (level-0 translation fault)
+FAR = ELR = 0xfffffe0007ab3488  →  符号 _arm_init (+0)
+```
+
+已排除的可能：
+- 不是段拷贝问题：物理地址 `0x51AB3488` 读出的是正确 ARM64 代码
+  （`0xd10343ff sub sp,sp,#0xd0` …）
+- 不是段越界：`__TEXT_EXEC` 覆盖 `0x7270000..0x7b18000`，`arm_init` 在其中
+- 不是 loader 问题：loader 自检全过并成功跳转
+
+**结论：控制流到达 `_arm_init` 时，该页尚无有效映射（L0 项无效）。**
+这是 XNU arm64 在 4 KiB granule 下的早期映射问题，需要在
+`arm_vm_init` / `pmap_bootstrap` / `start.s` 里查映射覆盖范围。
+
+### 10.3 新增的调试能力（可复用）
+
+| 工具 | 作用 |
+|---|---|
+| `loader.c` 的 `QEMU_SERIAL` | 把 loader 的每条日志同时写到 PL011（0x09000000） |
+| `build.sh` 的 `QEMU=1` | 串口输出 + QEMU 的 RAM 范围（真机不编这段） |
+| `mkadt_songyuan.py` 的 `SONGYUAN_DRAM_BASE/SIZE` | 把 DRAM 窗口搬进 QEMU virt RAM |
+| `qemu_loader.py`（已调几何） | 1200×2668 帧缓冲解码 + 寄存器/物理内存转储 |
+
+**这套能力让"改一次 → 上真机拍屏"变成了"本地 20 秒一轮"。**
+
+### 10.4 参考对照的坑
+
+从 data-a-live CI 下载的 `kernel.development.pandora` 入口是
+`0xFFFFFFF007406488`——那是 **16 KiB 基址**，不是 4K。
+所以该 artifact 不能直接作为 4K 对照，A/B 需要同版本的 4K 构建。
+
+### 10.5 下一步
+
+1. 读 `osfmk/arm64/start.s` + `osfmk/arm/arm_init.c` + `pmap_bootstrap`，
+   确认 4K 配置下早期映射的结束地址如何计算
+2. 检查 `__ARM64_PMAP_SUBPAGE_L1__` 是否真的生效（`SWEET.h` 里 `defined(PANDORA) || defined(SONGYUAN)` 分支）
+3. 必要时在 CI 里加一个 `PANDORA` 的 4K 对照构建（同一套补丁、不同 machine config）

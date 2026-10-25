@@ -172,7 +172,12 @@ def empty_nvram_proxy():
 
 def build(seed=None, qemu=False, qemu_gic=False, root_props=(), gpu_pool=0):
     """qemu=True: QEMU virt twin (GIC, CNTFRQ, RAM, framebuffer). qemu_gic=True: only GIC/CNTFRQ."""
-    phys_base, mem_size = (QEMU_PHYS_BASE, QEMU_MEM_SIZE) if qemu else (PHYS_BASE, MEM_SIZE)
+    _env_b = os.environ.get('SONGYUAN_DRAM_BASE')
+    _env_s = os.environ.get('SONGYUAN_DRAM_SIZE')
+    if _env_b and _env_s:
+        phys_base, mem_size = int(_env_b, 0), int(_env_s, 0)   # QEMU 实验：窗口搬进 virt RAM
+    else:
+        phys_base, mem_size = (QEMU_PHYS_BASE, QEMU_MEM_SIZE) if qemu else (PHYS_BASE, MEM_SIZE)
     fb, fb_size, fb_w, fb_h, fb_stride = ((QEMU_FB, QEMU_FB_SIZE, QEMU_FB_W, QEMU_FB_H, QEMU_FB_STRIDE)
                                           if qemu else (FB, FB_SIZE, FB_W, FB_H, FB_STRIDE))
     # Carve the panic log off the top so the kernel never allocates over it.
@@ -195,8 +200,8 @@ def build(seed=None, qemu=False, qemu_gic=False, root_props=(), gpu_pool=0):
         ('random-seed', seed),
         ('debug-enabled', u32(1)),
         ('embedded-panic-log-size', u32(PANIC_LOG_SIZE)),
-        ('firmware-version', cstr('pandora-shim')),
-        ('system-firmware-version', cstr('pandora-shim')),
+        ('firmware-version', cstr('songyuan-shim')),
+        ('system-firmware-version', cstr('songyuan-shim')),
         # iBoot's SHA-384 of the boot manifest; /sbin/mount -P 1 exits unless
         # it exists (bind mounts /private/preboot/<hex>/usr/standalone/firmware,
         # tolerating a missing directory). Fixed stand-in value.
@@ -355,10 +360,10 @@ def build(seed=None, qemu=False, qemu_gic=False, root_props=(), gpu_pool=0):
 
     # Identity of the iPhone X whose userland runs here: compatible[0] is
     # hw.model/hw.target (D22AP), model is hw.machine/hw.product
-    # (iPhone10,3). 'xiaomi,pandora' is what SweetPlatformExpert matches (patch 0110).
+    # (iPhone10,3). 'xiaomi,pandora' is what SweetPlatformExpert matches (patch 0110), so it stays;\n# 'xiaomi,songyuan' is appended so the ADT identifies this device.
     return node('device-tree', [
         ph(),
-        ('compatible', cstr('D22AP') + cstr('iPhone10,3') + cstr('xiaomi,pandora') + cstr('qcom,sm8850') + cstr('AppleARM')),
+        ('compatible', cstr('D22AP') + cstr('iPhone10,3') + cstr('xiaomi,pandora') + cstr('xiaomi,songyuan') + cstr('qcom,sm8850') + cstr('AppleARM')),
         ('model', cstr('iPhone10,3')),
         ('target-type', cstr('D22')),
         ('target-sub-type', cstr('D22AP')),
