@@ -174,18 +174,22 @@ jobs:
       - name: Build init ramdisk
         if: always()
         run: |
+          set -euxo pipefail
           # init 二进制已签入仓库（Linux 上用 cctools ld64 编好），CI 只负责造 HFS+ 镜像
           file tools/mini-init
           mkdir -p out
+          rm -rf "$RUNNER_TEMP/rd" "$RUNNER_TEMP/rd.dmg" "$RUNNER_TEMP/rd_raw.dmg"
+          mkdir -p "$RUNNER_TEMP/rd"
           hdiutil create -size 32m -fs HFS+ -volname SONGYUAN -quiet "$RUNNER_TEMP/rd.dmg"
-          hdiutil attach -nobrowse -mountpoint "$RUNNER_TEMP/rd" "$RUNNER_TEMP/rd.dmg"
+          hdiutil attach -nobrowse -noverify -mountpoint "$RUNNER_TEMP/rd" "$RUNNER_TEMP/rd.dmg"
           mkdir -p "$RUNNER_TEMP/rd/sbin"
           cp tools/mini-init "$RUNNER_TEMP/rd/sbin/launchd"
           chmod 755 "$RUNNER_TEMP/rd/sbin/launchd"
           ls -l "$RUNNER_TEMP/rd/sbin"
           hdiutil detach "$RUNNER_TEMP/rd"
-          hdiutil convert "$RUNNER_TEMP/rd.dmg" -format UDRW -o "$RUNNER_TEMP/ramdisk.img"
-          gzip -9 -c "$RUNNER_TEMP/ramdisk.img" > out/ramdisk.img.gz
+          hdiutil convert "$RUNNER_TEMP/rd.dmg" -format UDRW -o "$RUNNER_TEMP/rd_raw"
+          ls -l "$RUNNER_TEMP/rd_raw.dmg"
+          gzip -9 -c "$RUNNER_TEMP/rd_raw.dmg" > out/ramdisk.img.gz
           ls -la out/ramdisk.img.gz
       - uses: actions/upload-artifact@v4
         if: always()
