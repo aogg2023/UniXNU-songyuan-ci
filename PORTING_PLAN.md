@@ -390,3 +390,49 @@ FAR = ELR = 0xfffffe0007ab3488  →  符号 _arm_init (+0)
 **命名冲突提醒**：补丁集里 `0103` 有两个（`0103-songyuan-machine-config-4k` 与
 `0103-unixnu-native-4k-bootstrap-capacity`），排序后 songyuan 在前、unixnu 在后，
 应用顺序正常，但阅读时容易混。
+### 10.7 页表实测：映射存在，问题更深（2026-10-25）
+
+用 QMP `pmemsave` 在崩溃态 dump 了 bootstrap 页表池（`0x51186000`，16 页）：
+
+```
+V=P L1[1] → L2@0x51188000  项 136..511   (0x51000000..0x7FE00000)
+V=P L1[2] → L2@0x51189000  项 0..126     (0x80000000..0x8FC00000)
+KVA L1[0] → L2@0x5118a000  项 56..511    (0x51000000..0x89E00000)
+KVA L1[1] → L2@0x5118b000  项 0..46      (0x8A000000..0x8FC00000)
+```
+
+关键换算：KVA 的 `L2[61]` = `0x51A00601`（2 MB 块），覆盖
+`0x51A00000–0x51BFFFFF`；而 `arm_init` 的物理地址 `0x51AB3488` 正在其中。
+
+**结论：bootstrap 页表确实映射了 `arm_init`。**
+"映射缺失"假设被推翻，Prefetch Abort（ESR DFSC=0x4，L0 翻译错误）另有原因。
+
+剩余可能（按优先级）：
+
+1. **TTBR1 指向的不是这张表**——`x3 = x25 + PGBYTES` 只是我们推断的 KVA 根，
+   实际 `TTBR1_EL1` 可能被别处改写，或 slide 后重定向到别的页
+2. **TCR_EL1 的 T1SZ 不覆盖该 VA**——若 T1SZ 偏小，`0xfffffe00_xxxxxxxx`
+   超出可译址范围，walker 在第 0 级就判无效（正好对应 DFSC=0x4）
+3. 表项属性缺位（但我们 dump 到的项含 `0x601` = valid|AF|…，看起来正常）
+
+**下一步必须拿到 `TTBR1_EL1` 与 `TCR_EL1` 的实际值**，手段：
+- QEMU gdbstub（`-s`）连 gdb-multiarch，`info registers` 读系统寄存器
+- 或在 `start.s` 里紧跟 `MSR_TTBR1_EL1_X0` 之后把寄存器写到串口/FB
+
+### 10.8 发现一个真实的移植 bug（尚未修）
+
+`osfmk/arm64/start.s` 的早期调试标记写死了 **SWEET 的帧缓冲**：
+
+```asm
+#if defined(SWEET) && !defined(FUXI)
+    /* Stage 0: white 64x32 band, no stack or page tables needed. */
+    MOV64 x0, (0x9c000000 + 2368 * 4320)
+    ...写 64x32 像素...
+#endif
+```
+
+我们定义了 `SWEET`（经 `ARM64_BOARD_CONFIG_SWEET`）而未定义 `FUXI`，
+所以这段会编译进来，往 `0xC30A4C00` 写 8 KB 白块——那在本机是任意一段 RAM。
+
+修法：把条件改成 `#if defined(SWEET) && !defined(FUXI) && !defined(SONGYUAN)`，
+或把地址/几何改成从 `boot_args.Video` 读（更正确，但 MMU 未开时需用物理地址）。
