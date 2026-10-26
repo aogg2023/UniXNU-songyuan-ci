@@ -1,0 +1,59 @@
+diff --git a/osfmk/arm64/songyuan_log.c b/osfmk/arm64/songyuan_log.c
+index dfec0da..2b217b8 100644
+--- a/osfmk/arm64/songyuan_log.c
++++ b/osfmk/arm64/songyuan_log.c
+@@ -27,3 +27,36 @@ loader_log_putc(char c)
+ 		songyuan_log_len = n + 1;
+ 	}
+ }
++
++/*
++ * songyuan: stash the console log in the ramoops reserved region that Android's
++ * pstore reads after a reset.  0xff400000/2 MiB, console buffer 1 MiB at offset 0,
++ * no ECC (DT ramoops-region: console-size=0x100000, ecc-size absent), so the layout
++ * is {sig, start, size, data} - the persistent_ram_buffer header.
++ */
++#define RAMOOPS_PA              0xff400000
++#define RAMOOPS_CONSOLE_SIZE    0x100000
++#define PERSISTENT_RAM_SIG      0x43474244
++
++extern vm_offset_t ml_io_map(vm_offset_t, vm_size_t);
++
++void
++sweet_ramoops_save(void)
++{
++	vm_offset_t va = ml_io_map(RAMOOPS_PA, RAMOOPS_CONSOLE_SIZE);
++	unsigned int len = songyuan_log_len;
++
++	if (va == 0) {
++		return;
++	}
++	if (len > RAMOOPS_CONSOLE_SIZE - 16) {
++		len = RAMOOPS_CONSOLE_SIZE - 16;
++	}
++	((volatile uint32_t *)va)[0] = PERSISTENT_RAM_SIG;
++	((volatile uint32_t *)va)[1] = 0;
++	((volatile uint32_t *)va)[2] = len;
++	for (unsigned int i = 0; i < len; i++) {
++		((volatile char *)(va + 12))[i] = songyuan_log_buf[i];
++	}
++	__asm__ volatile("dmb oshst" ::: "memory");
++}
+diff --git a/osfmk/kern/debug.c b/osfmk/kern/debug.c
+index 743f278..8e02883 100644
+--- a/osfmk/kern/debug.c
++++ b/osfmk/kern/debug.c
+@@ -1454,6 +1454,13 @@ debugger_collect_diagnostics(unsigned int exception, unsigned int code, unsigned
+ 		PEHaltRestart(kPEPanicDiagnosticsDone);
+ 	}
+ 
++#if defined(SONGYUAN)
++	{
++		/* Leave the console log where Android's pstore can read it after the reset. */
++		extern void sweet_ramoops_save(void);
++		sweet_ramoops_save();
++	}
++#endif
+ 	if (debug_boot_arg & DB_REBOOT_ALWAYS) {
+ 		kdp_machine_reboot_type(kPEPanicRestartCPU, debugger_panic_options);
+ 	}
