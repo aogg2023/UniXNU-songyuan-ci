@@ -1,0 +1,30 @@
+--- a/iokit/Kernel/arm/SweetFramebuffer.cpp
++++ b/iokit/Kernel/arm/SweetFramebuffer.cpp
+@@ -655,5 +655,27 @@ AppleCLCD::start(IOService *provider)
+ 		OSSafeReleaseNULL(bl);
+ 	}
+ #endif
++#if defined(SONGYUAN)
++	/*
++	 * SONGYUAN FB PROBE: paint the whole panel solid magenta from the mapping
++	 * AppleCLCD already holds. If the phone shows magenta, the kernel reached
++	 * IOKit driver matching and can write the panel memory - then the same
++	 * mapping can carry a real text console. If the screen keeps the loader's
++	 * last frame, this function never ran or the mapping is not writable.
++	 * Boot-arg sweetfb_paint=0 disables it.
++	 */
++	int paint = 1;
++	PE_parse_boot_argn("sweetfb_paint", &paint, sizeof(paint));
++	if (paint && fPixels != 0 && fRowBytes >= fWidth * 4) {
++		volatile uint32_t *px = (volatile uint32_t *)fPixels;
++		uint32_t words = fRowBytes / 4;
++		for (uint32_t y = 0; y < fHeight; y++) {
++			volatile uint32_t *row = px + (uint64_t)y * words;
++			for (uint32_t x = 0; x < fWidth; x++) {
++				row[x] = 0x00ff00ff;
++			}
++		}
++	}
++#endif
+ 	IOLog("SWEET FB: AppleCLCD %ux%u stride %u at 0x%llx, default surface %u, presented as %ux%u\n",
+ 	    fWidth, fHeight, fRowBytes, fPhys, fSurface->id, fLogicalW, fLogicalH);

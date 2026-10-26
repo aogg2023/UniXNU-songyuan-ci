@@ -229,3 +229,4 @@
 0219-songyuan-hw-wdt.patch
 0220-songyuan-wdt-window.patch
 0210-songyuan-fbcon-deferred.patch
+0221-songyuan-fb-paint-probe.patch
