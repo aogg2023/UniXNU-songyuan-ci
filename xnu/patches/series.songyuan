@@ -228,3 +228,4 @@
 0218-songyuan-deadman-early.patch
 0219-songyuan-hw-wdt.patch
 0220-songyuan-wdt-window.patch
+0210-songyuan-fbcon-deferred.patch
