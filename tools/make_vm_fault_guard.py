@@ -13,7 +13,6 @@ WORK = os.path.join(r'E:\songyuan\work', 'vmfbuild-' + str(os.getpid()))
 VM_FAULT_C = 'osfmk/vm/vm_fault.c'
 
 GUARD = '''#if defined(SWEET)
-\textern void panic(const char *, ...) __printflike(1, 2) __dead2;
 \tif (__improbable(map == NULL)) {
 \t\tpanic("SONGYUAN: vm_fault_internal map=NULL vaddr=%p caller=%p",
 \t\t    (void *)vaddr, __builtin_return_address(0));
