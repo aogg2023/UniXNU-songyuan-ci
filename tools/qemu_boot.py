@@ -50,7 +50,7 @@ def build(args):
     os.makedirs(PAYLOAD, exist_ok=True)
     env = dict(os.environ)
     env['SONGYUAN_DRAM_BASE'] = '0x50000000'
-    env['SONGYUAN_DRAM_SIZE'] = '0x40000000'
+    env['SONGYUAN_DRAM_SIZE'] = '0xb0000000'
     env.pop('SONGYUAN_NO_FBCON', None)
     py = sys.executable
     adt = os.path.join(WORK, 'qemu.adt')
