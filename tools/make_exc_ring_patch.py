@@ -69,7 +69,8 @@ DUMP_CALL = '''#if defined(SWEET)
 
 RECORD = '''#if defined(SWEET)
 \textern void sweet_exc_record(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
-\tsweet_exc_record(esr, far, state->pc, state->sp, state->lr, state->fp);
+\tsweet_exc_record(esr, far, get_saved_state_pc(state), get_saved_state_sp(state),
+\t    get_saved_state_lr(state), get_saved_state_fp(state));
 #endif
 '''
 

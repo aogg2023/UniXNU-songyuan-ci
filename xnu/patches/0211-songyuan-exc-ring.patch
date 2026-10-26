@@ -1,14 +1,15 @@
 diff --git a/osfmk/arm64/sleh.c b/osfmk/arm64/sleh.c
-index c40c6ea..22ca4ec 100644
+index c40c6ea..8e7f8f2 100644
 --- a/osfmk/arm64/sleh.c
 +++ b/osfmk/arm64/sleh.c
-@@ -603,6 +603,10 @@ sleh_synchronous(arm_context_t *context, uint32_t esr, vm_offset_t far)
+@@ -603,6 +603,11 @@ sleh_synchronous(arm_context_t *context, uint32_t esr, vm_offset_t far)
  	esr_exception_class_t  class   = ESR_EC(esr);
  	arm_saved_state_t    * state   = &context->ss;
  	thread_t               thread  = current_thread();
 +#if defined(SWEET)
 +	extern void sweet_exc_record(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
-+	sweet_exc_record(esr, far, state->pc, state->sp, state->lr, state->fp);
++	sweet_exc_record(esr, far, get_saved_state_pc(state), get_saved_state_sp(state),
++	    get_saved_state_lr(state), get_saved_state_fp(state));
 +#endif
  #if MACH_ASSERT
  	int                    preemption_level = sleh_get_preemption_level();

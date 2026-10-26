@@ -14,6 +14,9 @@ param(
     [switch]$NoFbcon,
     [switch]$DryRun,
     [switch]$AllowExtentChange,
+    # panic -> PSCI reset instead of halting (debug bit DB_REBOOT_ALWAYS). Loses the
+    # on-screen panic, so it is off by default: photograph first, then hold power.
+    [switch]$AutoReboot,
     [string]$Adb = 'E:\Android\platform-tools\adb.exe',
     [string]$Fastboot = 'E:\Android\platform-tools\fastboot.exe',
     [string]$Python = 'C:\Users\Administrator\AppData\Local\Programs\Python\Python311\python.exe',
@@ -63,6 +66,14 @@ if ($Extents) {
 if ($LASTEXITCODE) { throw 'mkadt failed' }
 
 # 3. payload
+if ($AutoReboot) {
+    if ($Cmdline -match 'debug=0x[0-9a-fA-F]+') {
+        $Cmdline = $Cmdline -replace 'debug=0x[0-9a-fA-F]+', 'debug=0x10000c'
+    } else {
+        $Cmdline = "$Cmdline debug=0x10000c"
+    }
+    "cmdline (auto reboot on panic): $Cmdline"
+}
 $plArgs = @((Join-Path $repo 'tools\mkpayload.py'), $Kernel, $adtOut, $payloadOut, '--cmdline', $Cmdline)
 & $Python @plArgs
 if ($LASTEXITCODE) { throw 'mkpayload failed' }
