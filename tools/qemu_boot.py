@@ -13,6 +13,7 @@ Outputs (under E:\\songyuan\\work\\qemu): <stem>.png, <stem>.serial.txt, <stem>.
 import argparse
 import json
 import os
+import re
 import shutil
 import socket
 import struct
@@ -51,7 +52,10 @@ def build(args):
     env = dict(os.environ)
     env['SONGYUAN_DRAM_BASE'] = '0x50000000'
     env['SONGYUAN_DRAM_SIZE'] = '0xb0000000'
-    env.pop('SONGYUAN_NO_FBCON', None)
+    if getattr(args, 'no_fbcon', False):
+        env['SONGYUAN_NO_FBCON'] = '1'
+    else:
+        env.pop('SONGYUAN_NO_FBCON', None)
     py = sys.executable
     adt = os.path.join(WORK, 'qemu.adt')
     payload = os.path.join(PAYLOAD, 'payload.bin')
@@ -99,6 +103,46 @@ def regs():
     return out
 
 
+
+
+def kernel_symbols(path):
+    """name -> value for the few symbols we need (Mach-O nlist)."""
+    import struct
+    data = open(path, 'rb').read()
+    _, _, _, _, ncmds, _, _ = struct.unpack_from('<IiiIIII', data, 0)[0:7] if False else (None,)*7
+    magic, cputype, cpusub, ft, ncmds, sizeofcmds, flags = struct.unpack_from('<IiiIIII', data, 0)
+    off, out = 32, {}
+    for _ in range(ncmds):
+        cmd, cs = struct.unpack_from('<II', data, off)
+        if cmd == 0x2:
+            symoff, nsyms, stroff, strsize = struct.unpack_from('<IIII', data, off + 8)
+            st = data[stroff:stroff + strsize]
+            for i in range(nsyms):
+                n_strx, ntype, nsect, ndesc, nval = struct.unpack_from('<IBBHQ', data, symoff + i * 16)
+                e = st.find(b'\0', n_strx)
+                name = st[n_strx:e].decode('utf-8', 'replace')
+                if name in ('_songyuan_log_buf', '_songyuan_log_len'):
+                    out[name] = nval
+            break
+        off += cs
+    return out
+
+
+def dump_panic(kernel, path):
+    syms = kernel_symbols(kernel)
+    va = syms.get('_songyuan_log_buf')
+    if not va:
+        print('no _songyuan_log_buf in kernel')
+        return
+    pa = va - 0xfffffff006000000 + 0x50000000
+    qmp([{'execute': 'qmp_capabilities'},
+         {'execute': 'pmemsave', 'arguments': {'val': pa, 'size': 0x2000, 'filename': path}}])
+    data = open(path, 'rb').read()
+    lines = [m.group().decode() for m in re.finditer(rb'[ -~]{6,}', data)]
+    print('--- panic log ---')
+    print('\n'.join(lines[:60]))
+
+
 def dump_fb(path):
     qmp([
         {'execute': 'qmp_capabilities'},
@@ -141,6 +185,7 @@ def main():
     ap.add_argument('--seconds', type=int, default=20)
     ap.add_argument('--cmdline', default='-v debug=0xc cpus=1 keepsyms=1 rd=none')
     ap.add_argument('--stem', default='run')
+    ap.add_argument('--no-fbcon', action='store_true')
     args = ap.parse_args()
 
     img = build(args)
@@ -161,6 +206,7 @@ def main():
         time.sleep(args.seconds)
         dump_fb(fb)
         print(regs())
+        dump_panic(args.kernel, os.path.join(WORK, args.stem + '.panic.txt'))
     finally:
         proc.kill()
         try:
