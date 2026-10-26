@@ -1,8 +1,27 @@
---- a/iokit/Kernel/arm/SweetFramebuffer.cpp
-+++ b/iokit/Kernel/arm/SweetFramebuffer.cpp
-@@ -371,5 +371,145 @@ public:
- OSDefineMetaClassAndStructors(IOMobileFramebufferUserClient, IOUserClient);
+--- a/iokit/Kernel/arm/SweetSurface.h
++++ b/iokit/Kernel/arm/SweetSurface.h
+@@ -63,4 +63,15 @@
+ mach_port_name_t sweet_surface_port_in_task(SweetSurface *surface, task_t task);
  
++#if defined(SONGYUAN)
++/*
++ * SONGYUAN screen console (implemented in SweetSurface.cpp). Draws the kernel
++ * console log into the panel through AppleCLCD's IOMemoryDescriptor mapping,
++ * which is the only writable mapping of the panel memory on this board.
++ */
++extern "C" void sweet_fb_console_byte(char c);
++extern "C" void sweet_fb_console_start(uintptr_t base, uint32_t width,
++    uint32_t height, uint32_t stride);
++#endif
++
+ #endif /* SWEET */
+ #endif /* _SWEET_SURFACE_H */
+--- a/iokit/Kernel/arm/SweetSurface.cpp
++++ b/iokit/Kernel/arm/SweetSurface.cpp
+@@ -867,4 +867,142 @@ IOSurfaceRootUserClient::getTargetAndTrapForIndex(IOService **targetP, UInt32 index)
+ 	*targetP = this;
+ 	return &sweet_surface_traps[index];
+ }
 +#if defined(SONGYUAN)
 +/*
 + * SONGYUAN SCREEN CONSOLE.
@@ -18,7 +37,6 @@
 +extern "C" unsigned char iso_font[256 * 16];
 +extern "C" uint32_t sweet_log_copy(uint64_t *pos, char *out, uint32_t max);
 +extern "C" uint64_t sweet_log_position(void);
-+extern "C" void sweet_fb_console_byte(char c);
 +
 +#define SWEET_CON_RING      (4u << 20)
 +#define SWEET_CON_FG        0x00d8d8d8u
@@ -111,8 +129,8 @@
 +	sweet_con_putc(c);
 +}
 +
-+static void
-+sweet_con_start(uintptr_t base, uint32_t width, uint32_t height, uint32_t stride)
++extern "C" void
++sweet_fb_console_start(uintptr_t base, uint32_t width, uint32_t height, uint32_t stride)
 +{
 +	char buf[256];
 +	uint32_t n;
@@ -142,17 +160,16 @@
 +	}
 +}
 +#endif
-+
- bool
- AppleCLCD::start(IOService *provider)
- {
-@@ -650,5 +808,10 @@ AppleCLCD::start(IOService *provider)
+ #endif /* SWEET */
+--- a/iokit/Kernel/arm/SweetFramebuffer.cpp
++++ b/iokit/Kernel/arm/SweetFramebuffer.cpp
+@@ -650,5 +650,10 @@ AppleCLCD::start(IOService *provider)
  		OSSafeReleaseNULL(bl);
  	}
  #endif
 +#if defined(SONGYUAN)
 +	if (fPixels != 0 && fRowBytes >= fWidth * 4) {
-+		sweet_con_start(fPixels, fWidth, fHeight, fRowBytes);
++		sweet_fb_console_start(fPixels, fWidth, fHeight, fRowBytes);
 +	}
 +#endif
  	IOLog("SWEET FB: AppleCLCD %ux%u stride %u at 0x%llx, default surface %u, presented as %ux%u\n",
