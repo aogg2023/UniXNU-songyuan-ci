@@ -16,9 +16,9 @@ SLEH_C = 'osfmk/arm64/sleh.c'
 
 GUARD = '''#if defined(SWEET)
 \t\tif (map == NULL) {
+\t\t\ttask_t task = current_task();
 \t\t\tpanic("SONGYUAN: user fault with NULL thread->map: thread %p task %p task->map %p pc %p far %p",
-\t\t\t    (void *)thread, (void *)thread->task,
-\t\t\t    (void *)(thread->task ? thread->task->map : NULL),
+\t\t\t    (void *)thread, (void *)task, (void *)(task ? task->map : NULL),
 \t\t\t    (void *)get_saved_state_pc(state), (void *)fault_addr);
 \t\t}
 #endif
