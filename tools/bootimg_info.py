@@ -67,7 +67,8 @@ def vendor_boot(data):
     hsize, dtbsize, dtbaddr = struct.unpack('<IIQ', data[o + 20:o + 36])
     print(f'  vendor_boot header v{ver}, page {page}, header {hsize} bytes')
     print(f'  load addresses: kernel 0x{kaddr:x}, ramdisk 0x{raddr:x}, tags 0x{tags:x}, dtb 0x{dtbaddr:x}')
-    print(f'  board name "{name.split(b"\0")[0].decode()}", vendor ramdisk {vrsize} bytes, dtb {dtbsize} bytes')
+    board = name.split(b'\0')[0].decode()
+    print(f'  board name "{board}", vendor ramdisk {vrsize} bytes, dtb {dtbsize} bytes')
     print(f'  cmdline: "{cmd}"')
     if ver >= 4:
         tsize, tnum, tesize, bcsize = struct.unpack('<IIII', data[o + 36:o + 52])

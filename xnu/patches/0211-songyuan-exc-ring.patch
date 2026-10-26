@@ -1,0 +1,82 @@
+diff --git a/osfmk/arm64/sleh.c b/osfmk/arm64/sleh.c
+index c40c6ea..22ca4ec 100644
+--- a/osfmk/arm64/sleh.c
++++ b/osfmk/arm64/sleh.c
+@@ -603,6 +603,10 @@ sleh_synchronous(arm_context_t *context, uint32_t esr, vm_offset_t far)
+ 	esr_exception_class_t  class   = ESR_EC(esr);
+ 	arm_saved_state_t    * state   = &context->ss;
+ 	thread_t               thread  = current_thread();
++#if defined(SWEET)
++	extern void sweet_exc_record(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
++	sweet_exc_record(esr, far, state->pc, state->sp, state->lr, state->fp);
++#endif
+ #if MACH_ASSERT
+ 	int                    preemption_level = sleh_get_preemption_level();
+ #endif
+diff --git a/osfmk/kern/debug.c b/osfmk/kern/debug.c
+index 2d8c8a9..121b0f1 100644
+--- a/osfmk/kern/debug.c
++++ b/osfmk/kern/debug.c
+@@ -1061,6 +1061,50 @@ panic_with_thread_context(unsigned int reason, void *ctx, uint64_t debugger_opti
+ }
+ #endif /* defined (__x86_64__) */
+ 
++#if defined(SWEET)
++/*
++ * The panic the console shows after a double fault is the second one: the first
++ * fault's esr/far/pc are already gone by then. Keep the last few synchronous
++ * exceptions so the panic path can print the one that actually started it.
++ */
++#define SWEET_EXC_RING 8
++struct sweet_exc_rec {
++	uint64_t esr, far, pc, sp, lr, fp;
++};
++static struct sweet_exc_rec sweet_exc_ring[SWEET_EXC_RING];
++static volatile uint32_t sweet_exc_total;
++
++void sweet_exc_record(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
++void sweet_exc_dump(void);
++
++void
++sweet_exc_record(uint64_t esr, uint64_t far, uint64_t pc, uint64_t sp, uint64_t lr, uint64_t fp)
++{
++	uint32_t i = sweet_exc_total++ % SWEET_EXC_RING;
++	sweet_exc_ring[i].esr = esr;
++	sweet_exc_ring[i].far = far;
++	sweet_exc_ring[i].pc = pc;
++	sweet_exc_ring[i].sp = sp;
++	sweet_exc_ring[i].lr = lr;
++	sweet_exc_ring[i].fp = fp;
++}
++
++void
++sweet_exc_dump(void)
++{
++	uint32_t total = sweet_exc_total;
++	uint32_t first = total > SWEET_EXC_RING ? total - SWEET_EXC_RING : 0;
++
++	printf("SWEET EXC RING: %u synchronous exceptions, showing %u..%u\n",
++	    total, first, total - 1);
++	for (uint32_t n = first; n < total; n++) {
++		struct sweet_exc_rec *r = &sweet_exc_ring[n % SWEET_EXC_RING];
++		printf("SWEET EXC %u: esr=%#llx far=%#llx pc=%#llx sp=%#llx lr=%#llx fp=%#llx\n",
++		    n, r->esr, r->far, r->pc, r->sp, r->lr, r->fp);
++	}
++}
++#endif /* SWEET */
++
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wmissing-noreturn"
+ void
+@@ -1074,6 +1118,11 @@ panic_trap_to_debugger(const char *panic_format_str, va_list *panic_args, unsign
+ 	sweet_early_panic(panic_format_str, panic_args);
+ #endif
+ 
++#if defined(SWEET)
++	/* Last synchronous exceptions before this panic: the first fault matters. */
++	sweet_exc_dump();
++#endif
++
+ #if defined(__x86_64__) && (DEVELOPMENT || DEBUG)
+ 	read_lbr();
+ #endif

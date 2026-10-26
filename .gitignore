@@ -17,3 +17,5 @@ kernelcache*
 trustcache*
 *.im4p
 *.im4p.payload
+# device-local extent tables (change whenever f2fs moves the file)
+device/extents/
