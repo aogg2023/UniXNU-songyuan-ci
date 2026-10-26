@@ -1,7 +1,7 @@
 --- a/iokit/Kernel/arm/SweetFramebuffer.cpp
 +++ b/iokit/Kernel/arm/SweetFramebuffer.cpp
-@@ -258,4 +258,153 @@ public:
- #endif
+@@ -371,5 +371,145 @@ public:
+ OSDefineMetaClassAndStructors(IOMobileFramebufferUserClient, IOUserClient);
  
 +#if defined(SONGYUAN)
 +/*
@@ -18,6 +18,7 @@
 +extern "C" unsigned char iso_font[256 * 16];
 +extern "C" uint32_t sweet_log_copy(uint64_t *pos, char *out, uint32_t max);
 +extern "C" uint64_t sweet_log_position(void);
++extern "C" void sweet_fb_console_byte(char c);
 +
 +#define SWEET_CON_RING      (4u << 20)
 +#define SWEET_CON_FG        0x00d8d8d8u
@@ -56,12 +57,7 @@
 +			dst[x] = src[x];
 +		}
 +	}
-+	for (; y < sweet_con.height; y++) {
-+		volatile uint32_t *line = (volatile uint32_t *)sweet_con.base + (uint64_t)y * words;
-+		for (uint32_t x = 0; x < sweet_con.width; x++) {
-+			line[x] = SWEET_CON_BG;
-+		}
-+	}
++	sweet_con_rows(y, sweet_con.height, SWEET_CON_BG);
 +}
 +
 +static void
@@ -77,7 +73,7 @@
 +static void
 +sweet_con_putc(char c)
 +{
-+	if (sweet_con.base == 0) {
++	if (sweet_con.base == 0 || !sweet_con.ready) {
 +		return;
 +	}
 +	if (c == '\r') {
@@ -108,21 +104,19 @@
 +	sweet_con.col++;
 +}
 +
-+/* Called from _cnputs (osfmk/console/serial_console.c) for every console byte. */
++/* Called for every console byte from loader_log_putc (osfmk/arm64/songyuan_log.c). */
 +extern "C" void
-+sweet_fb_console_write(const char *c, int size)
++sweet_fb_console_byte(char c)
 +{
-+	if (!sweet_con.ready || c == 0 || size <= 0) {
-+		return;
-+	}
-+	for (int i = 0; i < size; i++) {
-+		sweet_con_putc(c[i]);
-+	}
++	sweet_con_putc(c);
 +}
 +
 +static void
 +sweet_con_start(uintptr_t base, uint32_t width, uint32_t height, uint32_t stride)
 +{
++	char buf[256];
++	uint32_t n;
++
 +	sweet_con.base = base;
 +	sweet_con.width = width;
 +	sweet_con.height = height;
@@ -133,7 +127,6 @@
 +	sweet_con.row = 0;
 +	sweet_con.ready = false;
 +	sweet_con_rows(0, height, SWEET_CON_BG);
-+	/* A blue band at the top proves the screen is ours even before any text. */
 +	sweet_con_rows(0, 24, SWEET_CON_HEADER);
 +	sweet_con.pos = sweet_log_position();
 +	if (sweet_con.pos > SWEET_CON_RING) {
@@ -142,8 +135,6 @@
 +		sweet_con.pos = 0;
 +	}
 +	sweet_con.ready = true;
-+	char buf[256];
-+	uint32_t n;
 +	while ((n = sweet_log_copy(&sweet_con.pos, buf, sizeof(buf))) > 0) {
 +		for (uint32_t i = 0; i < n; i++) {
 +			sweet_con_putc(buf[i]);
@@ -152,28 +143,28 @@
 +}
 +#endif
 +
- class IOMobileFramebufferUserClient : public IOUserClient {
- 	OSDeclareDefaultStructors(IOMobileFramebufferUserClient);
-@@ -650,5 +790,10 @@ AppleCLCD::start(IOService *provider)
+ bool
+ AppleCLCD::start(IOService *provider)
+ {
+@@ -650,5 +808,10 @@ AppleCLCD::start(IOService *provider)
  		OSSafeReleaseNULL(bl);
  	}
  #endif
 +#if defined(SONGYUAN)
 +	if (fPixels != 0 && fRowBytes >= fWidth * 4) {
-+		sweet_con_start((uintptr_t)fPixels, fWidth, fHeight, fRowBytes);
++		sweet_con_start(fPixels, fWidth, fHeight, fRowBytes);
 +	}
 +#endif
  	IOLog("SWEET FB: AppleCLCD %ux%u stride %u at 0x%llx, default surface %u, presented as %ux%u\n",
  	    fWidth, fHeight, fRowBytes, fPhys, fSurface->id, fLogicalW, fLogicalH);
---- a/osfmk/console/serial_console.c
-+++ b/osfmk/console/serial_console.c
-@@ -266,5 +266,9 @@ static inline void
- #if defined(ARM64_BOARD_CONFIG_SWEET)
- 	sweet_log_append(c, size);
- #endif
+--- a/osfmk/arm64/songyuan_log.c
++++ b/osfmk/arm64/songyuan_log.c
+@@ -22,4 +22,8 @@ loader_log_putc(char c)
+ 		songyuan_log_buf[n] = c;
+ 		songyuan_log_len = n + 1;
+ 	}
 +#if defined(SONGYUAN)
-+	extern void sweet_fb_console_write(const char *c, int size);
-+	sweet_fb_console_write(c, size);
++	extern void sweet_fb_console_byte(char c);
++	sweet_fb_console_byte(c);
 +#endif
- 
- 	if (disableConsoleOutput) {
+ }

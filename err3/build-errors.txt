@@ -1,0 +1,106 @@
+=== error: lines ===
+[33;01m[warning] [39;49;00mSkipping patch /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/patches/0217-songyuan-deadman.patch (already upstream, previously applied, or malformed): error: patch failed: osfmk/arm64/songyuan_log.c:27
+error: osfmk/arm64/songyuan_log.c: patch does not apply
+[33;01m[warning] [39;49;00mSkipping patch /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/patches/0218-songyuan-deadman-early.patch (already upstream, previously applied, or malformed): error: patch failed: osfmk/arm64/songyuan_log.c:62
+error: osfmk/arm64/songyuan_log.c: patch does not apply
+[33;01m[warning] [39;49;00mSkipping patch /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/patches/0219-songyuan-hw-wdt.patch (already upstream, previously applied, or malformed): error: patch failed: osfmk/arm64/songyuan_log.c:71
+error: osfmk/arm64/songyuan_log.c: patch does not apply
+[33;01m[warning] [39;49;00mSkipping patch /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/patches/0220-songyuan-wdt-window.patch (already upstream, previously applied, or malformed): error: patch failed: osfmk/arm64/songyuan_log.c:105
+error: osfmk/arm64/songyuan_log.c: patch does not apply
+[33;01m[warning] [39;49;00mSkipping patch /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/patches/0221-songyuan-fb-console.patch (already upstream, previously applied, or malformed): error: patch failed: osfmk/console/serial_console.c:266
+error: osfmk/console/serial_console.c: patch does not apply
+[33;01m[warning] [39;49;00mSkipping patch /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/patches/TrustCache.patch (already upstream, previously applied, or malformed): error: EXTERNAL_HEADERS/TrustCache/API.h: already exists in working directory
+error: EXTERNAL_HEADERS/TrustCache/RawTypes.h: already exists in working directory
+error: EXTERNAL_HEADERS/TrustCache/Return.h: already exists in working directory
+error: EXTERNAL_HEADERS/TrustCache/Types.h: already exists in working directory
+error: EXTERNAL_HEADERS/TrustCache/TypesConfig.h: already exists in working directory
+[33;01m[warning] [39;49;00mSkipping patch /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/patches/iobuffermemd_monterey.patch (already upstream, previously applied, or malformed): error: patch failed: iokit/Kernel/IOBufferMemoryDescriptor.cpp:332
+error: iokit/Kernel/IOBufferMemoryDescriptor.cpp: patch does not apply
+[33;01m[warning] [39;49;00mSkipping patch /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/patches/skywalk_sonoma.patch (already upstream, previously applied, or malformed): error: patch failed: bsd/skywalk/packet/os_packet.h:883
+error: bsd/skywalk/packet/os_packet.h: patch does not apply
+[33;01m[warning] [39;49;00mSkipping patch /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/patches/syntax_checker_sonoma.patch (already upstream, previously applied, or malformed): error: patch failed: tools/lldbmacros/core/syntax_checker.py:1
+error: tools/lldbmacros/core/syntax_checker.py: patch does not apply
+
+=== warning: apfs ===
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/bsd/miscfs/apfs/libdeflate/lib/../common_defs.h:481:27: warning: implicit conversion loses integer precision: 'int' to 'u16' (aka 'unsigned short') [-Wimplicit-int-conversion]
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/bsd/miscfs/apfs/libdeflate/lib/../common_defs.h:490:27: warning: implicit conversion loses integer precision: 'int' to 'u16' (aka 'unsigned short') [-Wimplicit-int-conversion]
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/bsd/miscfs/apfs/libdeflate/lib/deflate_decompress.c:784:39: warning: implicit conversion loses integer precision: 'unsigned int' to 'u16' (aka 'unsigned short') [-Wimplicit-int-conversion]
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/bsd/miscfs/apfs/libdeflate/lib/deflate_decompress.c:1029:41: warning: unused parameter 'num_offset_syms' [-Wunused-parameter]
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/bsd/miscfs/apfs/libdeflate/lib/decompress_template.h:175:24: warning: implicit conversion loses integer precision: 'unsigned int' to 'u8' (aka 'unsigned char') [-Wimplicit-int-conversion]
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/bsd/miscfs/apfs/libdeflate/lib/decompress_template.h:395:19: warning: implicit conversion loses integer precision: 'u32' (aka 'unsigned int') to 'u8' (aka 'unsigned char') [-Wimplicit-int-conversion]
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/bsd/miscfs/apfs/libdeflate/lib/decompress_template.h:403:20: warning: implicit conversion loses integer precision: 'u32' (aka 'unsigned int') to 'u8' (aka 'unsigned char') [-Wimplicit-int-conversion]
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/bsd/miscfs/apfs/libdeflate/lib/decompress_template.h:414:21: warning: implicit conversion loses integer precision: 'u32' (aka 'unsigned int') to 'u8' (aka 'unsigned char') [-Wimplicit-int-conversion]
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/bsd/miscfs/apfs/libdeflate/lib/decompress_template.h:432:19: warning: implicit conversion loses integer precision: 'u32' (aka 'unsigned int') to 'u8' (aka 'unsigned char') [-Wimplicit-int-conversion]
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/bsd/miscfs/apfs/libdeflate/lib/decompress_template.h:477:19: warning: implicit conversion loses integer precision: 'u32' (aka 'unsigned int') to 'u8' (aka 'unsigned char') [-Wimplicit-int-conversion]
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/bsd/miscfs/apfs/libdeflate/lib/decompress_template.h:702:18: warning: implicit conversion loses integer precision: 'u32' (aka 'unsigned int') to 'u8' (aka 'unsigned char') [-Wimplicit-int-conversion]
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/bsd/miscfs/apfs/libdeflate/lib/decompress_template.h:761:43: warning: cast from 'const void *' to 'unsigned char *' drops const qualifier [-Wcast-qual]
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/bsd/miscfs/apfs/libdeflate/lib/zlib_decompress.c:90:43: warning: cast from 'const void *' to 'unsigned char *' drops const qualifier [-Wcast-qual]
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/bsd/miscfs/apfs/libzbitmap/libzbitmap.c:344:28: warning: cast from 'const unsigned char *' to 'unsigned char *' drops const qualifier [-Wcast-qual]
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/bsd/miscfs/apfs/libzbitmap/libzbitmap.c:368:39: warning: cast from 'const unsigned char *' to 'struct zbm_cmp_chunk_hdr *' drops const qualifier [-Wcast-qual]
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/bsd/miscfs/apfs/libzbitmap/libzbitmap.c:378:37: warning: cast from 'const unsigned char *' to 'unsigned char *' drops const qualifier [-Wcast-qual]
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/bsd/miscfs/apfs/libzbitmap/libzbitmap.c:400:41: warning: cast from 'const unsigned char *' to 'struct zbm_chunk_hdr *' drops const qualifier [-Wcast-qual]
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/bsd/miscfs/apfs/apfs_lib.c:2952:1: warning: no previous prototype for function 'apfs_deflate_malloc' [-Wmissing-prototypes]
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/bsd/miscfs/apfs/apfs_lib.c:2969:1: warning: no previous prototype for function 'apfs_deflate_free' [-Wmissing-prototypes]
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/bsd/miscfs/apfs/apfs_vfsops.c:493:5: warning: mixing declarations and code is incompatible with standards before C99 [-Wdeclaration-after-statement]
+
+=== last 60 lines ===
+/usr/bin/touch /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/.mach_kernel.timestamp
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/SETUP/installfile/installfile -c -S -m 0755 /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.sym/System.kext/PlugIns/Unsupported.kext/Unsupported /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/Unsupported.kext/Unsupported
+[1m                       INSTALL[m [msymbolset Private[m
+done building xnu
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/SETUP/installfile/installfile -c -S -m 0755 /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.sym/System.kext/PlugIns/Private.kext/Private /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/Private.kext/Private
+/bin/mkdir -p /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext
+/bin/mkdir -p /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/Kasan.kext
+[1m                       INSTALL[m [mkextplist System.kext/Info.plist[m
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/SETUP/installfile/installfile -c -S -m 0644 /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.sym/System.kext/Info.plist /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/Info.plist
+/bin/mkdir -p /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/Kcov.kext
+[1m                       INSTALL[m [mkextplist System.kext/PlugIns/Kasan.kext/Info.plist[m
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/SETUP/installfile/installfile -c -S -m 0644 /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.sym/System.kext/PlugIns/Kasan.kext/Info.plist /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/Kasan.kext/Info.plist
+[1m                       INSTALL[m [mkextplist System.kext/PlugIns/Kcov.kext/Info.plist[m
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/SETUP/installfile/installfile -c -S -m 0644 /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.sym/System.kext/PlugIns/Kcov.kext/Info.plist /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/Kcov.kext/Info.plist
+/bin/mkdir -p /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/AppleNMI.kext
+/bin/mkdir -p /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/ApplePlatformFamily.kext
+[1m                       INSTALL[m [mkextplist System.kext/PlugIns/AppleNMI.kext/Info.plist[m
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/SETUP/installfile/installfile -c -S -m 0644 /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.sym/System.kext/PlugIns/AppleNMI.kext/Info.plist /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/AppleNMI.kext/Info.plist
+[1m                       INSTALL[m [mkextplist System.kext/PlugIns/ApplePlatformFamily.kext/Info.plist[m
+[1m                    INSTALLSYM[m [msymbolset Kcov[m ([3mdevelopment[m)[m
+/bin/mkdir -p /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.sym/System.kext/PlugIns/Kcov.kext
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/SETUP/installfile/installfile -c -S -m 0644 /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.sym/System.kext/PlugIns/ApplePlatformFamily.kext/Info.plist /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/ApplePlatformFamily.kext/Info.plist
+/Applications/Xcode_15.0.1.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/lipo -create `(echo /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/DEVELOPMENT_ARM64_SONGYUAN/config/Kcov.symbolset | xargs -L 1 lipo -detailed_info) | awk '/is architecture/ {s[$6]=$3} END {for (a in s) {print s[a]}}'` -output /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.sym/System.kext/PlugIns/Kcov.kext/Kcov 
+/bin/mkdir -p /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/IONVRAMFamily.kext
+/bin/mkdir -p /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/IOSystemManagement.kext
+/bin/mkdir -p /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/BSDKernel.kext
+/bin/mkdir -p /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/IOKit.kext
+[1m                       INSTALL[m [mkextplist System.kext/PlugIns/IOSystemManagement.kext/Info.plist[m
+[1m                       INSTALL[m [mkextplist System.kext/PlugIns/IONVRAMFamily.kext/Info.plist[m
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/SETUP/installfile/installfile -c -S -m 0644 /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.sym/System.kext/PlugIns/IONVRAMFamily.kext/Info.plist /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/IONVRAMFamily.kext/Info.plist
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/SETUP/installfile/installfile -c -S -m 0644 /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.sym/System.kext/PlugIns/IOSystemManagement.kext/Info.plist /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/IOSystemManagement.kext/Info.plist
+/bin/mkdir -p /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/Kcov.kext
+[1m                       INSTALL[m [mkextplist System.kext/PlugIns/IOKit.kext/Info.plist[m
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/SETUP/installfile/installfile -c -S -m 0644 /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.sym/System.kext/PlugIns/IOKit.kext/Info.plist /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/IOKit.kext/Info.plist
+[1m                       INSTALL[m [mkextplist System.kext/PlugIns/BSDKernel.kext/Info.plist[m
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/SETUP/installfile/installfile -c -S -m 0644 /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.sym/System.kext/PlugIns/BSDKernel.kext/Info.plist /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/BSDKernel.kext/Info.plist
+/bin/mkdir -p /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/Libkern.kext
+/bin/mkdir -p /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/Mach.kext
+[1m                INSTALLVARIANT[m [msymbolset Kcov[m ([3mdevelopment[m)[m
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/SETUP/installfile/installfile -c -S -m 0755 /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.sym/System.kext/PlugIns/Kcov.kext/Kcov /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/Kcov.kext/Kcov
+make -C "/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/DEVELOPMENT_ARM64_SONGYUAN/san" -f /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/san/Makefile CURRENT_KERNEL_CONFIG=DEVELOPMENT CURRENT_ARCH_CONFIG=ARM64 CURRENT_MACHINE_CONFIG=SONGYUAN CURRENT_BUILD_CONFIG=DEVELOPMENT^ARM64^SONGYUAN SOURCE=/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/san/ RELATIVE_SOURCE_PATH=./san TARGET=/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/DEVELOPMENT_ARM64_SONGYUAN/. OBJPATH=/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/DEVELOPMENT_ARM64_SONGYUAN do_config_install;
+/bin/mkdir -p /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/MACFramework.kext
+[1m                       INSTALL[m [mkextplist System.kext/PlugIns/Libkern.kext/Info.plist[m
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/SETUP/installfile/installfile -c -S -m 0644 /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.sym/System.kext/PlugIns/Libkern.kext/Info.plist /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/Libkern.kext/Info.plist
+[1m                       INSTALL[m [mkextplist System.kext/PlugIns/Mach.kext/Info.plist[m
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/SETUP/installfile/installfile -c -S -m 0644 /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.sym/System.kext/PlugIns/Mach.kext/Info.plist /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/Mach.kext/Info.plist
+/bin/mkdir -p /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/Unsupported.kext
+/bin/mkdir -p /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/Private.kext
+[1m                       INSTALL[m [mkextplist System.kext/PlugIns/MACFramework.kext/Info.plist[m
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/SETUP/installfile/installfile -c -S -m 0644 /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.sym/System.kext/PlugIns/MACFramework.kext/Info.plist /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/MACFramework.kext/Info.plist
+/bin/mkdir -p /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot//System/Library/Frameworks/Kernel.framework/Versions/A/Resources
+[1m                       INSTALL[m [mkextplist System.kext/PlugIns/Unsupported.kext/Info.plist[m
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/SETUP/installfile/installfile -c -S -m 0644 /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.sym/System.kext/PlugIns/Unsupported.kext/Info.plist /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/Unsupported.kext/Info.plist
+[1m                       INSTALL[m [mkextplist System.kext/PlugIns/Private.kext/Info.plist[m
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/SETUP/installfile/installfile -c -S -m 0644 /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.sym/System.kext/PlugIns/Private.kext/Info.plist /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot/System/Library/Extensions/System.kext/PlugIns/Private.kext/Info.plist
+[1m                       INSTALL[m SupportedKPIs-all-archs.txt[m
+/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/SETUP/installfile/installfile -c -S -m 0444 /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/DEVELOPMENT_ARM64_SONGYUAN/SupportedKPIs-all-archs.txt /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/fakeroot//System/Library/Frameworks/Kernel.framework/Versions/A/Resources/SupportedKPIs-all-archs.txt
+make -C "/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/DEVELOPMENT_ARM64_SONGYUAN" -f /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/Makefile CURRENT_KERNEL_CONFIG=DEVELOPMENT CURRENT_ARCH_CONFIG=ARM64 CURRENT_MACHINE_CONFIG=SONGYUAN CURRENT_BUILD_CONFIG=DEVELOPMENT^ARM64^SONGYUAN SOURCE=/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/xnu/ RELATIVE_SOURCE_PATH=. TARGET=/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/DEVELOPMENT_ARM64_SONGYUAN/ OBJPATH=/Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/DEVELOPMENT_ARM64_SONGYUAN do_config_install;
+/usr/bin/touch /Users/runner/work/UniXNU-songyuan-ci/UniXNU-songyuan-ci/dxb/build/xnu.obj/.symbolset.timestamp
+  🎉 XNU Build Done!
