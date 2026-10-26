@@ -1,16 +1,16 @@
-# songyuan 的 XNU 补丁序列（按行序应用，`#` 为注释；由 CI 的 patch_series 消费）
+# songyuan ? XNU ???????????`#` ????? CI ? patch_series ???
 #
-# 基线：xnu-8796.141.3（Darwin 22.6.0）
-# 实测（2026-10-25）：在 Linux 上模拟 HFS staging 后顺序应用，196 个全部干净通过。
-# 与 data-a-live/pandora 的差异只有两处：
-#   - 剔除 0102-pandora-machine-config-4k.patch（注册 PANDORA 机型）
-#   - 剔除 0124-pandora-native-4k-cs-hash-cache-on.patch（给 PANDORA 加编译开关）
-#     这两者由 0103-songyuan-machine-config-4k.patch 一次性取代：
-#     它注册 SONGYUAN 机型，并保留 -DPANDORA=1 以复用已调好的代码路径，
-#     同时并入 -DXNU_NATIVE_CS_HASH_CACHE=1。
-# 注意：0031 / 0041 依赖 0026-stage-hfs.sh 先把 Apple HFS 铺到 bsd/sweet_hfs/，
-# 该脚本要求 MACHINE_CONFIG ∈ {SWEET,FUXI,PANDORA,SONGYUAN} 且 macOS 13.5。
-# 共 196 个
+# ???xnu-8796.141.3?Darwin 22.6.0?
+# ???2026-10-25??? Linux ??? HFS staging ??????196 ????????
+# ? data-a-live/pandora ????????
+#   - ?? 0102-pandora-machine-config-4k.patch??? PANDORA ???
+#   - ?? 0124-pandora-native-4k-cs-hash-cache-on.patch?? PANDORA ??????
+#     ???? 0103-songyuan-machine-config-4k.patch ??????
+#     ??? SONGYUAN ?????? -DPANDORA=1 ????????????
+#     ???? -DXNU_NATIVE_CS_HASH_CACHE=1?
+# ???0031 / 0041 ?? 0026-stage-hfs.sh ?? Apple HFS ?? bsd/sweet_hfs/?
+# ????? MACHINE_CONFIG ? {SWEET,FUXI,PANDORA,SONGYUAN} ? macOS 13.5?
+# ? 196 ?
 
 0001-new-clang-drop-removed-auto-var-init-flag.patch
 0002-new-clang-backport-UIO_STACKBUF.patch
@@ -222,4 +222,4 @@
 0211-songyuan-exc-ring.patch
 0212-songyuan-user-abort-null-map.patch
 0213-songyuan-vm-fault-null-map.patch
-0214-songyuan-fbcon-phys.patch
+0210-songyuan-fbcon-deferred.patch
