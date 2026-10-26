@@ -41,7 +41,9 @@ Push-Location $here
 try {
     & $clang @flags -c start.S -o "$o/start.o"
     if ($LASTEXITCODE) { throw 'start.S failed' }
-    & $clang @flags "-DPAYLOAD=`"$payloadC`"" -c payload.S -o "$o/payload.o"
+    # .incbin wants a quoted string; keep the quotes through Windows PowerShell 5.1 too
+    $payloadArg = '-DPAYLOAD="' + $payloadC + '"'
+    & $clang @flags $payloadArg -c payload.S -o "$o/payload.o"
     if ($LASTEXITCODE) { throw 'payload.S failed' }
     & $clang @flags -c loader.c -o "$o/loader.o"
     if ($LASTEXITCODE) { throw 'loader.c failed' }

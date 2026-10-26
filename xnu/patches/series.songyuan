@@ -222,3 +222,4 @@
 0211-songyuan-exc-ring.patch
 0212-songyuan-user-abort-null-map.patch
 0213-songyuan-vm-fault-null-map.patch
+0214-songyuan-fbcon-phys.patch
