@@ -14,9 +14,9 @@ param(
     [switch]$NoFbcon,
     [switch]$DryRun,
     [switch]$AllowExtentChange,
-    # panic -> PSCI reset instead of halting (debug bit DB_REBOOT_ALWAYS). Loses the
-    # on-screen panic, so it is off by default: photograph first, then hold power.
-    [switch]$AutoReboot,
+    # panic -> PSCI reset instead of halting (debug bit DB_REBOOT_ALWAYS). Default on so a
+    # panic never needs a manual power press; pass -AutoReboot:$false to keep the screen.
+    [switch]$AutoReboot = $true,
     [string]$Adb = 'E:\Android\platform-tools\adb.exe',
     [string]$Fastboot = 'E:\Android\platform-tools\fastboot.exe',
     [string]$Python = 'C:\Users\Administrator\AppData\Local\Programs\Python\Python311\python.exe',
