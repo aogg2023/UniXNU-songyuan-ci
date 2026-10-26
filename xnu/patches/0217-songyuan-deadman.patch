@@ -1,0 +1,65 @@
+diff --git a/bsd/dev/sweet_ufs.c b/bsd/dev/sweet_ufs.c
+index e86da89..533e598 100644
+--- a/bsd/dev/sweet_ufs.c
++++ b/bsd/dev/sweet_ufs.c
+@@ -1565,6 +1565,9 @@ sweet_ufs_init(void)
+ 	pandora_files_init();
+ 	/* Adreno 840 bring-up, boot-arg pandora_gpu (bsd/dev/pandora_gpu.c). */
+ 	pandora_gpu_init();
++	/* 90 s bring-up watchdog: save the log to ramoops, then panic-reset. */
++	extern void sweet_deadman_start(void);
++	sweet_deadman_start();
+ #endif
+ 	/* Power / volume keys (bsd/dev/fuxi_keys.c, SPMI arbiter v7). */
+ 	fuxi_keys_init();
+diff --git a/osfmk/arm64/songyuan_log.c b/osfmk/arm64/songyuan_log.c
+index dfec0da..5043af0 100644
+--- a/osfmk/arm64/songyuan_log.c
++++ b/osfmk/arm64/songyuan_log.c
+@@ -9,6 +9,8 @@
+  * 物理地址 = 符号 VA - __TEXT vmaddr(0xfffffff007004000) + physBase。
+  */
+ #include <mach/mach_types.h>
++#include <pexpert/pexpert.h>
++#include <kern/thread.h>
+ 
+ #define SONGYUAN_LOG_SIZE (512 * 1024)
+ 
+@@ -27,3 +29,37 @@ loader_log_putc(char c)
+ 		songyuan_log_len = n + 1;
+ 	}
+ }
++
++/*
++ * Bring-up watchdog: after 90 s (or 30 s with boot-arg sweetdeadman=30) save the log
++ * to the ramoops region and panic, so debug=0x10000c resets the phone back to Android
++ * with a readable log in pstore instead of hanging until someone presses power.
++ */
++extern void delay(int);
++extern void panic(const char *, ...) __printflike(1, 2) __dead2;
++
++static void
++sweet_deadman_thread(void *arg __unused, wait_result_t wr __unused)
++{
++	int seconds = 90;
++
++	PE_parse_boot_argn("sweetdeadman", &seconds, sizeof(seconds));
++	if (seconds <= 0) {
++		seconds = 90;
++	}
++	for (int i = 0; i < seconds * 10; i++) {
++		delay(100000);
++	}
++	sweet_ramoops_save();
++	panic("SONGYUAN: bring-up watchdog (%d s), log saved to ramoops", seconds);
++}
++
++void
++sweet_deadman_start(void)
++{
++	thread_t thread;
++
++	if (kernel_thread_start(sweet_deadman_thread, NULL, &thread) == KERN_SUCCESS) {
++		thread_deallocate(thread);
++	}
++}

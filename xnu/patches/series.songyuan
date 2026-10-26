@@ -224,3 +224,4 @@
 0213-songyuan-vm-fault-null-map.patch
 0215-songyuan-usb-acm-console.patch
 0216-songyuan-ramoops.patch
+0217-songyuan-deadman.patch
