@@ -1,0 +1,18 @@
+diff --git a/osfmk/vm/vm_fault.c b/osfmk/vm/vm_fault.c
+index 3e2a5f7..147f0e5 100644
+--- a/osfmk/vm/vm_fault.c
++++ b/osfmk/vm/vm_fault.c
+@@ -4064,6 +4064,13 @@ vm_fault_internal(
+ 	vm_map_offset_t caller_pmap_addr,
+ 	ppnum_t         *physpage_p)
+ {
++#if defined(SWEET)
++	extern void panic(const char *, ...) __printflike(1, 2) __dead2;
++	if (__improbable(map == NULL)) {
++		panic("SONGYUAN: vm_fault_internal map=NULL vaddr=%p caller=%p",
++		    (void *)vaddr, __builtin_return_address(0));
++	}
++#endif
+ 	vm_map_version_t        version;        /* Map version for verificiation */
+ 	boolean_t               wired;          /* Should mapping be wired down? */
+ 	vm_object_t             object;         /* Top-level object */
