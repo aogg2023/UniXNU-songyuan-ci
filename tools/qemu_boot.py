@@ -27,9 +27,9 @@ PAYLOAD = os.path.join(WORK, 'payload')
 KERNEL_DEFAULT = r'E:\songyuan\bringup_work\songyuan\kernel\kernel.development.songyuan'
 
 # phone framebuffer, as mkadt_songyuan.py declares it for --qemu-gic
-FB_BASE = 0xfc800000
+FB_BASE = 0x9c000000
 FB_SIZE = 0x0b00000
-FB_W, FB_H, FB_STRIDE = 1200, 2668, 1200 * 4
+FB_W, FB_H, FB_STRIDE = 1080, 2400, 1080 * 4
 QEMU = r'E:\Android\qemu\qemu-system-aarch64.exe'
 QMP_PORT = 4444
 
@@ -55,7 +55,7 @@ def build(args):
     py = sys.executable
     adt = os.path.join(WORK, 'qemu.adt')
     payload = os.path.join(PAYLOAD, 'payload.bin')
-    run([py, os.path.join(REPO, 'tools/mkadt_songyuan.py'), adt, '--qemu-gic'], env=env)
+    run([py, os.path.join(REPO, 'tools/mkadt_songyuan.py'), adt, '--qemu'], env=env)
     run([py, os.path.join(REPO, 'tools/mkpayload.py'), args.kernel, adt, payload,
          '--cmdline', args.cmdline], env=env)
     run([py, os.path.join(REPO, 'shim/loader/build.ps1').replace('.ps1', '.ps1')], env=env) \
@@ -84,6 +84,19 @@ def qmp(cmd_list):
                     raise SystemExit(f"qmp error: {obj['error']}")
                 break
     s.close()
+
+
+def regs():
+    s = socket.create_connection(('127.0.0.1', QMP_PORT), timeout=10)
+    f = s.makefile('rwb')
+    json.loads(f.readline().decode())
+    f.write((json.dumps({'execute': 'qmp_capabilities'}) + '\n').encode()); f.flush()
+    f.readline()
+    f.write((json.dumps({'execute': 'human-monitor-command',
+                         'arguments': {'command-line': 'info registers'}}) + '\n').encode()); f.flush()
+    out = json.loads(f.readline().decode()).get('return', '')
+    s.close()
+    return out
 
 
 def dump_fb(path):
@@ -147,6 +160,7 @@ def main():
         time.sleep(2)
         time.sleep(args.seconds)
         dump_fb(fb)
+        print(regs())
     finally:
         proc.kill()
         try:
