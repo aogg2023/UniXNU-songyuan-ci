@@ -196,7 +196,7 @@ def main():
         os.remove(fb)
 
     qemu_cmd = [QEMU, '-M', 'virt,gic-version=3', '-cpu', 'max', '-smp', '1', '-m', '4G',
-                '-nographic', '-serial', 'file:' + serial, '-monitor', 'none', '-no-reboot',
+                '-nographic', '-serial', 'file:' + serial, '-monitor', 'none', '-no-reboot', '-icount', 'shift=3',
                 '-qmp', f'tcp:127.0.0.1:{QMP_PORT},server,nowait',
                 '-kernel', img]
     print('+', ' '.join(qemu_cmd), flush=True)
