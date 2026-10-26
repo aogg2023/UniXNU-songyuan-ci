@@ -1,0 +1,23 @@
+diff --git a/osfmk/arm64/songyuan_log.c b/osfmk/arm64/songyuan_log.c
+index 97cbc3f..8fbdef7 100644
+--- a/osfmk/arm64/songyuan_log.c
++++ b/osfmk/arm64/songyuan_log.c
+@@ -105,12 +105,17 @@ sweet_deadman_thread(void *arg __unused, wait_result_t wr __unused)
+ {
+ 	static event_t wq;
+ 
++	int pet_seconds = 60;
++	int ticks = 0;
++
++	PE_parse_boot_argn("sweetpet", &pet_seconds, sizeof(pet_seconds));
+ 	sweet_wdt_arm();
+ 	for (;;) {
+ 		sweet_ramoops_save();
+-		if (sweet_wdt != NULL) {
++		if (sweet_wdt != NULL && (pet_seconds <= 0 || ticks < pet_seconds / 2)) {
+ 			sweet_wdt[WDT_RST / 4] = 1;
+ 		}
++		ticks++;
+ 		assert_wait_timeout(&wq, THREAD_INTERRUPTIBLE, 2000, TIMEOUT_MSEC);
+ 		thread_block(THREAD_CONTINUE_NULL);
+ 	}
