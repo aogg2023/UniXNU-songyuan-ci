@@ -27,16 +27,16 @@
 #define SONGYUAN_KGSL_SMMU_SIZE  0x00040000u
 
 /* ---- 显示 ---- */
-/* [DT] splash 基址与 pandora / 一加 infiniti 一致 */
+/* [DT] splash_region = <0x0 0xfc800000 0x0 0x2b00000>，与 pandora 逐位相同。
+ *      2026-10-26 从真机 /sys/firmware/fdt 读出；此前记的 11 MiB 没有出处。 */
 #define SONGYUAN_SPLASH_BASE     0xFC800000ull
-/* [DT] 声明 11 MiB。注意：1200x2668x4 = 12.8 MiB > 11 MiB，
- *      实测写到声明范围外 1.21 MiB 仍能正常显示，说明实际缓冲更大。
- *      这是已知未定义行为，见 PLATFORM_FACTS.md 第 10.2 节。 */
-#define SONGYUAN_SPLASH_SIZE     0x00B00000u
+#define SONGYUAN_SPLASH_SIZE     0x02B00000u    /* 43 MiB；一帧 1200x2608x4 = 12.5 MiB */
 
-/* [DT] 面板分辨率；[SWEEP] 步长由标定得出 */
+/* [DT] 活动面板 qcom,mdss_dsi_songyuan_42_0d_0a_p2_dsc_cmd：
+ *      DT 的 panel-width/height = 1200x2608，DRM 模式 1200x2608x{60..185}，
+ *      `wm size` = 1200x2608（2026-10-26 实测）。此前记的 2668 是错的。 */
 #define SONGYUAN_PANEL_W         1200u
-#define SONGYUAN_PANEL_H         2668u
+#define SONGYUAN_PANEL_H         2608u
 #define SONGYUAN_PANEL_STRIDE    4800u    /* 1200 * 4 */
 
 /* ---- 启动交接 ---- */

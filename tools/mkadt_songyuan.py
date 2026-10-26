@@ -1,8 +1,14 @@
 # songyuan 版：由 tools/mkadt_pandora.py 派生。
 #
 # 与 pandora 的差异（全部来自本机实测，见 ../../PLATFORM_FACTS.md 第 9/10 节）：
-#   - 帧缓冲尺寸 0x2b00000 -> 0x0b00000（DT 声明 11 MiB）
-#   - 面板 1220x2656 -> 1200x2668，stride 4880 -> 4800（sweep 标定）
+#   - 帧缓冲尺寸保持 pandora 的 0x2b00000（43 MiB）：真机 DT 的
+#     /reserved-memory/splash_region 就是 <0x0 0xfc800000 0x0 0x2b00000>，
+#     与 pandora 逐位相同（2026-10-26 从真机 /sys/firmware/fdt 读出，见
+#     device/DISPLAY-2026-10-26.md）。此前写的 0x0b00000（11 MiB）没有出处。
+#   - 面板 1220x2656 -> 1200x2608，stride 4880 -> 4800：真机活动面板是
+#     qcom,mdss_dsi_songyuan_42_0d_0a_p2_dsc_cmd，DT 的 panel-width/height = 1200x2608，
+#     DRM 模式 1200x2608x{60,90,120,144,165,185}，`wm size` 同为 1200x2608。
+#     此前写的 2668 不在这三处任何一处，是错的。
 #   - 合成 ECID 改为 SONGYUAN 标记
 #
 # 与 pandora 逐位相同、因此未改的部分（实测确认）：
@@ -62,10 +68,10 @@ SOC_BASE = 0x01000000
 
 GICD, GICD_SIZE = 0x17000000, 0x10000
 GICR, GICR_SIZE = 0x17080000, 0x200000   # 8 redistributors, stride 0x40000
-FB, FB_SIZE = 0xfc800000, 0x0b00000      # songyuan: DT 声明 11 MiB（一帧实际需 12.8 MiB，见文档）
-FB_W, FB_H, FB_STRIDE = 1200, 2668, 1200 * 4   # songyuan: DT 1200x2668，stride 由 sweep 标定
-QEMU_FB, QEMU_FB_SIZE = 0x9c000000, 0x1700000
-QEMU_FB_W, QEMU_FB_H, QEMU_FB_STRIDE = 1080, 2400, 1080 * 4
+FB, FB_SIZE = 0xfc800000, 0x2b00000      # 真机 splash_region：43 MiB（不是 11 MiB）
+FB_W, FB_H, FB_STRIDE = 1200, 2608, 1200 * 4   # 真机面板 1200x2608（DT + DRM 模式 + wm size）
+QEMU_FB, QEMU_FB_SIZE = FB, FB_SIZE      # QEMU 的 RAM 覆盖 0xfc800000，两处用同一个地址
+QEMU_FB_W, QEMU_FB_H, QEMU_FB_STRIDE = FB_W, FB_H, FB_STRIDE
 PANDORA_ECID = 0x534f4e4759554e01  # 'SONGYUAN' 合成 ID
 UFS, UFS_SIZE = 0x01d84000, 0x3000
 TIMEBASE = 19200000

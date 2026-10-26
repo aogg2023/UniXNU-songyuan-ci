@@ -7,7 +7,10 @@
  * Like ios-sweet's shim/loader.c: copy segments to phys_base + (vmaddr - virt_base),
  * place the ADT and boot_args behind the kernel, jump to the entry with the MMU and
  * caches off and x0 = boot_args (physical). Framebuffer values were measured on this
- * songyuan by hello1..hello11 (0xfc800000, 1200x2668, stride 4800, ARGB8888).
+ * songyuan by hello1..hello11 (0xfc800000, 1200x2608, stride 4800, ARGB8888).
+ * Geometry/region cross-checked 2026-10-26 against the live FDT: splash_region is
+ * <0x0 0xfc800000 0x0 0x2b00000> (43 MiB) and the active panel
+ * qcom,mdss_dsi_songyuan_42_0d_0a_p2_dsc_cmd is 1200x2608 (DRM mode says the same).
  *
  * MMU is off: every access is Device memory (-mstrict-align, 8-byte copies).
  * Linked at 0 and loaded anywhere: no absolute pointers in data.
@@ -18,9 +21,9 @@
 void fatal(void) __attribute__((noreturn));
 
 #define FB          0xfc800000ull
-#define FB_SIZE     0x0b00000ull
+#define FB_SIZE     0x2b00000ull        /* splash_region in the live FDT: 43 MiB */
 #define FB_W        1200u
-#define FB_H        2668u
+#define FB_H        2608u               /* panel mode 1200x2608, not 2668 */
 #define FB_STRIDE   (1200u * 4)
 /* Kernel RAM: the 5 GiB window at 0x8c0000000 that mkadt_songyuan.py hands to XNU. */
 #ifndef RAM_LO

@@ -23,15 +23,17 @@ import time
 import zlib
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-WORK = r'E:\songyuan\work\qemu'
+WORK = os.environ.get('SONGYUAN_QEMU_WORK', r'E:\songyuan\work\qemu')
 PAYLOAD = os.path.join(WORK, 'payload')
 KERNEL_DEFAULT = r'E:\songyuan\bringup_work\songyuan\kernel\kernel.development.songyuan'
 
-# phone framebuffer, as mkadt_songyuan.py declares it for --qemu-gic
-FB_BASE = 0x9c000000
-PHONE_FB = 0xfc800000
-FB_SIZE = 0x0b00000
-FB_W, FB_H, FB_STRIDE = 1080, 2400, 1080 * 4
+# The framebuffer is the phone's in both modes: the loader always draws at
+# 0xfc800000 (shim/loader/loader.c) and QEMU's 0x50000000+0xb0000000 window covers
+# it, so mkadt_songyuan.py declares the same region for the QEMU twin as well.
+# 0x2b00000 (43 MiB) and 1200x2608 are from the live FDT / DRM mode, not from sweep.
+FB_BASE = 0xfc800000
+FB_SIZE = 0x2b00000
+FB_W, FB_H, FB_STRIDE = 1200, 2608, 1200 * 4
 QEMU = r'E:\Android\qemu\qemu-system-aarch64.exe'
 QMP_PORT = 4444
 
@@ -215,7 +217,7 @@ def main():
             proc.wait(timeout=10)
         except Exception:
             pass
-    png_from_fb(fb, os.path.join(WORK, args.stem + '.png'), *((1200, 1440, 4800) if getattr(args,'phone_fb',False) else (FB_W, FB_H, FB_STRIDE)))
+    png_from_fb(fb, os.path.join(WORK, args.stem + '.png'), FB_W, FB_H, FB_STRIDE)
     if os.path.exists(serial):
         print('--- serial tail ---')
         print(open(serial, encoding='utf-8', errors='replace').read()[-2000:])
