@@ -1,0 +1,20 @@
+diff --git a/osfmk/arm64/sleh.c b/osfmk/arm64/sleh.c
+index c40c6ea..86a7d59 100644
+--- a/osfmk/arm64/sleh.c
++++ b/osfmk/arm64/sleh.c
+@@ -1382,6 +1382,15 @@ handle_user_abort(arm_saved_state_t *state, uint32_t esr, vm_offset_t fault_addr
+ 
+ 		assert(map != kernel_map);
+ 
++#if defined(SWEET)
++		if (map == NULL) {
++			panic("SONGYUAN: user fault with NULL thread->map: thread %p task %p task->map %p pc %p far %p",
++			    (void *)thread, (void *)thread->task,
++			    (void *)(thread->task ? thread->task->map : NULL),
++			    (void *)get_saved_state_pc(state), (void *)fault_addr);
++		}
++#endif
++
+ 		if (!(fault_type & VM_PROT_EXECUTE)) {
+ 			vm_fault_addr = tbi_clear(fault_addr);
+ 		}

@@ -220,3 +220,4 @@
 0209-songyuan-apfs-readonly.patch
 0206-songyuan-console-to-fbcon.patch
 0211-songyuan-exc-ring.patch
+0212-songyuan-user-abort-null-map.patch
