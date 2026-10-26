@@ -29,6 +29,7 @@ KERNEL_DEFAULT = r'E:\songyuan\bringup_work\songyuan\kernel\kernel.development.s
 
 # phone framebuffer, as mkadt_songyuan.py declares it for --qemu-gic
 FB_BASE = 0x9c000000
+PHONE_FB = 0xfc800000
 FB_SIZE = 0x0b00000
 FB_W, FB_H, FB_STRIDE = 1080, 2400, 1080 * 4
 QEMU = r'E:\Android\qemu\qemu-system-aarch64.exe'
@@ -59,7 +60,7 @@ def build(args):
     py = sys.executable
     adt = os.path.join(WORK, 'qemu.adt')
     payload = os.path.join(PAYLOAD, 'payload.bin')
-    run([py, os.path.join(REPO, 'tools/mkadt_songyuan.py'), adt, '--qemu'], env=env)
+    run([py, os.path.join(REPO, 'tools/mkadt_songyuan.py'), adt, '--qemu-gic' if getattr(args,'phone_fb',False) else '--qemu'], env=env)
     run([py, os.path.join(REPO, 'tools/mkpayload.py'), args.kernel, adt, payload,
          '--cmdline', args.cmdline], env=env)
     run([py, os.path.join(REPO, 'shim/loader/build.ps1').replace('.ps1', '.ps1')], env=env) \
@@ -185,7 +186,8 @@ def main():
     ap.add_argument('--seconds', type=int, default=20)
     ap.add_argument('--cmdline', default='-v debug=0xc cpus=1 keepsyms=1 rd=none')
     ap.add_argument('--stem', default='run')
-    ap.add_argument('--no-fbcon', action='store_true')
+    ap.add_argument('--no-fbcon', action='store_true', default=True)
+    ap.add_argument('--phone-fb', action='store_true')
     args = ap.parse_args()
 
     img = build(args)
@@ -213,7 +215,7 @@ def main():
             proc.wait(timeout=10)
         except Exception:
             pass
-    png_from_fb(fb, os.path.join(WORK, args.stem + '.png'))
+    png_from_fb(fb, os.path.join(WORK, args.stem + '.png'), *((1200, 1440, 4800) if getattr(args,'phone_fb',False) else (FB_W, FB_H, FB_STRIDE)))
     if os.path.exists(serial):
         print('--- serial tail ---')
         print(open(serial, encoding='utf-8', errors='replace').read()[-2000:])

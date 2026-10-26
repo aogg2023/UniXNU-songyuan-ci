@@ -11,7 +11,7 @@ param(
     [string]$Extents = '',
     [string]$RootDevicePath = '/data/local/tmp/iosroot.img',
     [string]$Cmdline = '-v debug=0xc cpus=1 keepsyms=1 rd=ufsroot0',
-    [switch]$NoFbcon,
+    [switch]$NoFbcon = $true,
     [switch]$DryRun,
     [switch]$AllowExtentChange,
     # panic -> PSCI reset instead of halting (debug bit DB_REBOOT_ALWAYS). Default on so a

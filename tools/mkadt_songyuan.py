@@ -178,6 +178,7 @@ def build(seed=None, qemu=False, qemu_gic=False, root_props=(), gpu_pool=0):
         phys_base, mem_size = int(_env_b, 0), int(_env_s, 0)   # QEMU 实验：窗口搬进 virt RAM
     else:
         phys_base, mem_size = (QEMU_PHYS_BASE, QEMU_MEM_SIZE) if qemu else (PHYS_BASE, MEM_SIZE)
+    fb_w_env = os.environ.get('SONGYUAN_FB_W'); fb_h_env = os.environ.get('SONGYUAN_FB_H')
     fb, fb_size, fb_w, fb_h, fb_stride = ((QEMU_FB, QEMU_FB_SIZE, QEMU_FB_W, QEMU_FB_H, QEMU_FB_STRIDE)
                                           if qemu else (FB, FB_SIZE, FB_W, FB_H, FB_STRIDE))
     # Carve the panic log off the top so the kernel never allocates over it.
@@ -318,6 +319,9 @@ def build(seed=None, qemu=False, qemu_gic=False, root_props=(), gpu_pool=0):
             ('canvas-width', u32(1125)),
             ('canvas-height', u32(2436)),
         ])])
+    if not qemu and os.environ.get('SONGYUAN_FBCON_H'):
+        fb_h = int(os.environ['SONGYUAN_FBCON_H'], 0)
+
 
     fbcon = node('sweet-fbcon', [
         ph(),
@@ -327,7 +331,10 @@ def build(seed=None, qemu=False, qemu_gic=False, root_props=(), gpu_pool=0):
         ('stride', u32(fb_stride)),
     ])
 
-    # bsd/dev/sweet_ufs.c: the UFS host ABL leaves running (absolute physical reg).
+    
+    if not qemu and os.environ.get('SONGYUAN_FBCON_H'):
+        fb_h = int(os.environ['SONGYUAN_FBCON_H'], 0)
+# bsd/dev/sweet_ufs.c: the UFS host ABL leaves running (absolute physical reg).
     ufs = node('sweet-ufs', [
         ph(),
         ('compatible', cstr('qcom,ufshc')),
