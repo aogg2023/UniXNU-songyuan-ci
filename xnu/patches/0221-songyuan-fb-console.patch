@@ -18,7 +18,7 @@
  #endif /* _SWEET_SURFACE_H */
 --- a/iokit/Kernel/arm/SweetSurface.cpp
 +++ b/iokit/Kernel/arm/SweetSurface.cpp
-@@ -867,4 +867,142 @@ IOSurfaceRootUserClient::getTargetAndTrapForIndex(IOService **targetP, UInt32 index)
+@@ -867,4 +867,156 @@ IOSurfaceRootUserClient::getTargetAndTrapForIndex(IOService **targetP, UInt32 index)
  	*targetP = this;
  	return &sweet_surface_traps[index];
  }
@@ -33,6 +33,10 @@
 + * mapping, so the phone shows its own boot log with no USB link, no UFS write and no
 + * fbcon. Nothing is drawn before AppleCLCD::start; there the whole ring (last 4 MiB)
 + * is replayed, so the backlog from before IOKit appears as well.
++ *
++ * Glyphs are 16x32 (2x the 8x16 font) so the screen can be photographed from a
++ * normal distance. iso_font stores bit 0 as the leftmost pixel (see the fbcon
++ * drawing loop), so the bit test is (1u << gx), not the mirrored 0x80 >> gx.
 + */
 +extern "C" unsigned char iso_font[256 * 16];
 +extern "C" uint32_t sweet_log_copy(uint64_t *pos, char *out, uint32_t max);
@@ -42,6 +46,9 @@
 +#define SWEET_CON_FG        0x00d8d8d8u
 +#define SWEET_CON_BG        0x00000000u
 +#define SWEET_CON_HEADER    0x00204060u
++#define SWEET_CON_SCALE     2
++#define SWEET_CON_GLYPH_W   (8 * SWEET_CON_SCALE)
++#define SWEET_CON_GLYPH_H   (16 * SWEET_CON_SCALE)
 +
 +static struct {
 +	uintptr_t base;
@@ -68,9 +75,10 @@
 +{
 +	uint32_t words = sweet_con.stride / 4;
 +	uint32_t y;
-+	for (y = 0; y + 16 < sweet_con.height; y++) {
++	for (y = 0; y + SWEET_CON_GLYPH_H < sweet_con.height; y++) {
 +		volatile uint32_t *dst = (volatile uint32_t *)sweet_con.base + (uint64_t)y * words;
-+		volatile uint32_t *src = (volatile uint32_t *)sweet_con.base + (uint64_t)(y + 16) * words;
++		volatile uint32_t *src = (volatile uint32_t *)sweet_con.base
++		    + (uint64_t)(y + SWEET_CON_GLYPH_H) * words;
 +		for (uint32_t x = 0; x < words; x++) {
 +			dst[x] = src[x];
 +		}
@@ -111,12 +119,18 @@
 +	uint32_t words = sweet_con.stride / 4;
 +	const unsigned char *glyph = iso_font + (unsigned char)c * 16;
 +	volatile uint32_t *px = (volatile uint32_t *)sweet_con.base
-+	    + (uint64_t)(sweet_con.row * 16) * words + (uint64_t)sweet_con.col * 8;
++	    + (uint64_t)(sweet_con.row * SWEET_CON_GLYPH_H) * words
++	    + (uint64_t)sweet_con.col * SWEET_CON_GLYPH_W;
 +	for (uint32_t gy = 0; gy < 16; gy++) {
-+		volatile uint32_t *line = px + (uint64_t)gy * words;
 +		unsigned int bits = glyph[gy];
-+		for (uint32_t gx = 0; gx < 8; gx++) {
-+			line[gx] = (bits & (0x80u >> gx)) ? SWEET_CON_FG : SWEET_CON_BG;
++		for (uint32_t sy = 0; sy < SWEET_CON_SCALE; sy++) {
++			volatile uint32_t *line = px + (uint64_t)(gy * SWEET_CON_SCALE + sy) * words;
++			for (uint32_t gx = 0; gx < 8; gx++) {
++				uint32_t color = (bits & (1u << gx)) ? SWEET_CON_FG : SWEET_CON_BG;
++				for (uint32_t sx = 0; sx < SWEET_CON_SCALE; sx++) {
++					line[gx * SWEET_CON_SCALE + sx] = color;
++				}
++			}
 +		}
 +	}
 +	sweet_con.col++;
@@ -139,13 +153,13 @@
 +	sweet_con.width = width;
 +	sweet_con.height = height;
 +	sweet_con.stride = stride;
-+	sweet_con.cols = width / 8;
-+	sweet_con.rows = height / 16;
++	sweet_con.cols = width / SWEET_CON_GLYPH_W;
++	sweet_con.rows = height / SWEET_CON_GLYPH_H;
 +	sweet_con.col = 0;
 +	sweet_con.row = 0;
 +	sweet_con.ready = false;
 +	sweet_con_rows(0, height, SWEET_CON_BG);
-+	sweet_con_rows(0, 24, SWEET_CON_HEADER);
++	sweet_con_rows(0, SWEET_CON_GLYPH_H, SWEET_CON_HEADER);
 +	sweet_con.pos = sweet_log_position();
 +	if (sweet_con.pos > SWEET_CON_RING) {
 +		sweet_con.pos -= SWEET_CON_RING;
