@@ -1,0 +1,54 @@
+diff --git a/bsd/kern/bsd_init.c b/bsd/kern/bsd_init.c
+index 77bd5b4..9a3f698 100644
+--- a/bsd/kern/bsd_init.c
++++ b/bsd/kern/bsd_init.c
+@@ -486,6 +486,13 @@ bsd_init(void)
+ 	boolean_t       netboot = FALSE;
+ #endif
+ 
++#if defined(SONGYUAN)
++	{
++		extern void sweet_deadman_start(void);
++		sweet_deadman_start();
++	}
++#endif
++
+ #if (DEVELOPMENT || DEBUG)
+ 	platform_stall_panic_or_spin(PLATFORM_STALL_XNU_LOCATION_BSD_INIT);
+ #endif
+diff --git a/osfmk/arm64/songyuan_log.c b/osfmk/arm64/songyuan_log.c
+index b8a1bb7..f1a6c78 100644
+--- a/osfmk/arm64/songyuan_log.c
++++ b/osfmk/arm64/songyuan_log.c
+@@ -62,15 +62,17 @@ sweet_ramoops_save(void)
+ }
+ #include <pexpert/pexpert.h>
+ #include <kern/thread.h>
++#include <kern/sched_prim.h>
+ 
+ /*
+  * Bring-up watchdog: after 90 s (or 30 s with boot-arg sweetdeadman=30) save the log
+  * to the ramoops region and panic, so debug=0x10000c resets the phone back to Android
+  * with a readable log in pstore instead of hanging until someone presses power.
+  */
+-extern void delay(int);
+ extern void panic(const char *, ...) __printflike(1, 2) __dead2;
+ 
++static event_t sweet_deadman_wq;
++
+ static void
+ sweet_deadman_thread(void *arg __unused, wait_result_t wr __unused)
+ {
+@@ -80,9 +82,9 @@ sweet_deadman_thread(void *arg __unused, wait_result_t wr __unused)
+ 	if (seconds <= 0) {
+ 		seconds = 90;
+ 	}
+-	for (int i = 0; i < seconds * 10; i++) {
+-		delay(100000);
+-	}
++	/* Sleep, do not spin: with cpus=1 a busy loop would starve the boot. */
++	assert_wait_timeout(&sweet_deadman_wq, THREAD_INTERRUPTIBLE, (uint32_t)seconds * 1000, TIMEOUT_MSEC);
++	thread_block(THREAD_CONTINUE_NULL);
+ 	sweet_ramoops_save();
+ 	panic("SONGYUAN: bring-up watchdog (%d s), log saved to ramoops", seconds);
+ }
