@@ -36,11 +36,11 @@
 +	}
 +	memcpy(&size, bounce + 12, 4);
 +	memcpy(&total, bounce + 16, 8);
-+	if (size < 4096 || size > (2u << 20) || total == 0) {
++	if (size < 4096 || size > (8u << 20) || total == 0) {
 +		printf("SONGYUAN LOGDUMP: bad header size=%u total=%llu\n", size, total);
 +		return;
 +	}
-+	want = 3072;                     /* about 40 lines of 2x text */
++	want = 4096;                     /* about 55 lines of 2x text */
 +	if (total < want) {
 +		want = (uint32_t)total;
 +	}
