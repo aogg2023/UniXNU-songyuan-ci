@@ -1,0 +1,15 @@
+--- a/bsd/dev/sweet_ufs.c
++++ b/bsd/dev/sweet_ufs.c
+@@ -700,6 +700,12 @@ sweet_log_append(const char *c, int size)
+ #if defined(FUXI)
+     __asm__ volatile("dc cvac, %0; dsb sy" :: "r"(&sweet_log_total) : "memory");
+ #endif
++#if defined(SONGYUAN)
++	{
++		extern void sweet_fb_console_write(const char *c, int size);
++		sweet_fb_console_write(c, size);
++	}
++#endif
+ }
+ 
+ /*

@@ -30,7 +30,7 @@ foreach ($t in @($clang, $lld, $objcopy, $readelf)) {
 
 $flags = @('--target=aarch64-none-elf', '-O2', '-ffreestanding', '-fno-builtin', '-nostdlib',
     '-fno-pic', '-fno-stack-protector', '-mgeneral-regs-only', '-mstrict-align', '-Wall', '-Wextra', '-Werror')
-if ($Qemu) { $flags += @('-DQEMU_SERIAL', '-DRAM_LO=0x40000000ull', '-DRAM_HI=0x140000000ull') }
+if ($Qemu) { $flags += @('-DQEMU_SERIAL', '-DRAM_LO=0x40000000ull', '-DRAM_HI=0x200000000ull') }
 
 $o = Join-Path $Out 'loader'
 New-Item -ItemType Directory -Force -Path $o | Out-Null

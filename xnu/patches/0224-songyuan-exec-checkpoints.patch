@@ -1,0 +1,41 @@
+--- a/bsd/kern/kern_exec.c
++++ b/bsd/kern/kern_exec.c
+@@ -6818,7 +6818,10 @@ load_init_program_at_path(proc_t p, user_addr_t scratch_addr, const char* path)
+ 	 * So that init task is set with uid,gid 0 token
+ 	 */
+ 	set_security_token(p);
+ 
++#if defined(SONGYUAN)
++	printf("SONGYUAN EXEC: calling execve(%s)\n", path);
++#endif
+ 	return execve(p, &init_exec_args, retval);
+ }
+ 
+@@ -1160,5 +1163,8 @@ static int
+ exec_mach_imgact(struct image_params *imgp)
+ {
++#if defined(SONGYUAN)
++	printf("SONGYUAN EXEC: exec_mach_imgact entry vdata=%p\n", imgp->ip_vdata);
++#endif
+ 	struct mach_header *mach_header = (struct mach_header *)imgp->ip_vdata;
+ 	proc_t                  p = vfs_context_proc(imgp->ip_vfs_context);
+ 	int                     error = 0;
+@@ -7600,6 +7607,9 @@ exec_prefault_data(proc_t p __unused, struct image_params *imgp, load_result_t *load_result)
+ 	size_t expected_all_image_infos_size;
+ 	kern_return_t kr;
+ 
++#if defined(SONGYUAN)
++	printf("SONGYUAN EXEC: prefault entry_point=%p\n", (void *)(uintptr_t)load_result->entry_point);
++#endif
+ 	/*
+ 	 * Prefault executable or dyld entry point.
+ 	 */
+@@ -7611,5 +7621,8 @@ exec_prefault_data(proc_t p __unused, struct image_params *imgp, load_result_t *load_result)
+ 	    FALSE, VM_KERN_MEMORY_NONE,
+ 	    THREAD_UNINT, NULL, 0);
++#if defined(SONGYUAN)
++	printf("SONGYUAN EXEC: prefault vm_fault -> %d\n", kr);
++#endif
+ 	if (kr != KERN_SUCCESS) {
+ 		DEBUG4K_ERROR("map %p va 0x%llx -> 0x%x\n", current_map(), (uint64_t)vm_map_trunc_page(load_result->entry_point, vm_map_page_mask(current_map())), kr);
+ 	}
