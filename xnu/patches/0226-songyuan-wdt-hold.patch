@@ -1,0 +1,89 @@
+--- a/osfmk/arm64/songyuan_log.c
++++ b/osfmk/arm64/songyuan_log.c
+@@ -8,6 +8,8 @@
+  * 物理地址 = 符号 VA - __TEXT vmaddr(0xfffffff007004000) + physBase。
+  */
+ #include <mach/mach_types.h>
++#include <pexpert/pexpert.h>
++#include <kern/thread.h>
+ 
+ #define SONGYUAN_LOG_SIZE (512 * 1024)
+ 
+@@ -63,2 +65,65 @@
+ 	__asm__ volatile("dmb oshst" ::: "memory");
+ }
++
++/*
++ * Qualcomm MSM watchdog (DT qcom,msm-watchdog @ 0x17600000; downstream register
++ * layout RST 0x4, EN 0x8, BITE 0x14).  The bootloader leaves it armed, so a
++ * kernel that never pets it is reset by the SoC after its timeout - which is
++ * what turned every bring-up boot into a mysterious power cycle.  This thread
++ * pets it and snapshots the console log into ramoops every 2 s.  boot-arg
++ * sweetpet=0 keeps petting for good; the default (60 s) stops petting after a
++ * minute so a hung kernel still resets and pstore keeps the last log.
++ */
++#define WDT_PA          0x17600000
++#define WDT_RST         0x04
++#define WDT_EN          0x08
++#define WDT_BITE        0x14
++#define WDT_MAX_TICKS   0xfffff
++
++static volatile uint32_t *sweet_wdt;
++
++static void
++sweet_wdt_arm(void)
++{
++	vm_offset_t va = ml_io_map(WDT_PA, 0x1000);
++
++	if (va == 0) {
++		return;
++	}
++	sweet_wdt = (volatile uint32_t *)va;
++	sweet_wdt[WDT_EN / 4] = 0;
++	sweet_wdt[WDT_BITE / 4] = WDT_MAX_TICKS;
++	sweet_wdt[WDT_EN / 4] = 1;
++}
++
++static void
++sweet_wdt_thread(void *arg __unused, wait_result_t wr __unused)
++{
++	static event_t wq;
++	int pet_seconds = 60;
++	int ticks = 0;
++
++	(void)arg;
++	(void)wr;
++	PE_parse_boot_argn("sweetpet", &pet_seconds, sizeof(pet_seconds));
++	sweet_wdt_arm();
++	for (;;) {
++		sweet_ramoops_save();
++		if (sweet_wdt != NULL && (pet_seconds <= 0 || ticks < pet_seconds / 2)) {
++			sweet_wdt[WDT_RST / 4] = 1;
++		}
++		ticks++;
++		assert_wait_timeout(&wq, THREAD_INTERRUPTIBLE, 2000, TIMEOUT_MSEC);
++		thread_block(THREAD_CONTINUE_NULL);
++	}
++}
++
++void
++sweet_wdt_start(void)
++{
++	thread_t thread;
++
++	if (kernel_thread_start(sweet_wdt_thread, NULL, &thread) == KERN_SUCCESS) {
++		thread_deallocate(thread);
++	}
++}
+--- a/bsd/dev/sweet_ufs.c
++++ b/bsd/dev/sweet_ufs.c
+@@ -1628,6 +1628,9 @@
+ 	/* Adreno 840 bring-up, boot-arg pandora_gpu (bsd/dev/pandora_gpu.c). */
+ 	pandora_gpu_init();
+ #endif
++	/* Pet the MSM watchdog and snapshot the log (osfmk/arm64/songyuan_log.c). */
++	extern void sweet_wdt_start(void);
++	sweet_wdt_start();
+ 	/* Power / volume keys (bsd/dev/fuxi_keys.c, SPMI arbiter v7). */
+ 	fuxi_keys_init();
+ 	/* WCN7850 PCIe0/MHI probe, boot-arg fuxiwlan (bsd/dev/fuxi_wlan.c). */
