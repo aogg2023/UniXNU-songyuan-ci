@@ -1,6 +1,6 @@
 --- a/bsd/miscfs/apfs/apfs_vfsops.c
 +++ b/bsd/miscfs/apfs/apfs_vfsops.c
-@@ -7310,4 +7310,23 @@ apfs_mount_common(mount_t mp, vnode_t devvp, vfs_context_t ctx, uint32_t container, int volume)
+@@ -7310,4 +7310,19 @@ apfs_mount_common(mount_t mp, vnode_t devvp, vfs_context_t ctx, uint32_t container, int volume)
  	if (VNOP_IOCTL(devvp, DKIOCGETBLOCKSIZE, (caddr_t)&devblock, 0, ctx) != 0 ||
  	    devblock == 0 || (APFS_META_CHUNK % devblock) != 0) {
 +#if defined(SONGYUAN)
@@ -8,14 +8,10 @@
 +		 * SONGYUAN: the pinned-file root node may not answer DKIOCGETBLOCKSIZE, or
 +		 * may report a size that does not divide the metadata chunk. APFS only needs
 +		 * it to line reads up, so fall back to 512 instead of giving up silently.
-+		 * This line says which case this was; it is printed once per boot.
++		 * Printed on every attempt because the mount loop retries for ever and the
++		 * first line would otherwise scroll off the screen.
 +		 */
-+		static int apfs_root_diag_bs;
-+		if (!apfs_root_diag_bs) {
-+			apfs_root_diag_bs = 1;
-+			printf("SONGYUAN APFS: block size check failed (bs=%u), falling back to 512\n",
-+			    devblock);
-+		}
++		printf("SONGYUAN APFS: DKIOCGETBLOCKSIZE -> bs=%u, using 512\n", devblock);
 +		devblock = 512;
 +		if ((APFS_META_CHUNK % devblock) != 0) {
 +			return EINVAL;
@@ -24,22 +20,31 @@
  		return EINVAL;
 +#endif
  	}
-@@ -7338,7 +7357,18 @@ apfs_mount_common(mount_t mp, vnode_t devvp, vfs_context_t ctx, uint32_t container, int volume)
- 			uint32_t bs;
+@@ -7338,6 +7353,14 @@ apfs_mount_common(mount_t mp, vnode_t devvp, vfs_context_t ctx, uint32_t container, int volume)
  			uint64_t bc;
  
  			error = apfs_dev_read(dc, 0, sb, APFS_META_CHUNK);
 +#if defined(SONGYUAN)
-+			{
-+				static int apfs_root_diag_read;
-+				if (!apfs_root_diag_read && sb != NULL) {
-+					apfs_root_diag_read = 1;
-+					printf("SONGYUAN APFS: read err=%d hdr0=%02x%02x%02x%02x hdr32=%02x%02x%02x%02x devbs=%u\n",
-+					    error, sb[0], sb[1], sb[2], sb[3],
-+					    sb[32], sb[33], sb[34], sb[35], devblock);
-+				}
++			if (sb != NULL) {
++				printf("SONGYUAN APFS: read err=%d hdr0=%02x%02x%02x%02x hdr32=%02x%02x%02x%02x devbs=%u n=%llu\n",
++				    error, sb[0], sb[1], sb[2], sb[3],
++				    sb[32], sb[33], sb[34], sb[35], devblock,
++				    (unsigned long long)devblocks);
 +			}
 +#endif
  			if (error == 0 && memcmp(sb + 32, "NXSB", 4) != 0) {
  				error = EINVAL;         /* (no container here: as the root, the next filesystem's turn) */
  			}
+@@ -7521,4 +7546,12 @@ apfs_mountroot(mount_t mp, vnode_t devvp, vfs_context_t ctx)
+ 	(void)PE_parse_boot_argn("apfs_root_c", &c, sizeof(c));
+ 	(void)PE_parse_boot_argn("apfs_root_v", &v, sizeof(v));
++#if defined(SONGYUAN)
++	{
++		int err = apfs_mount_common(mp, devvp, ctx, c, v);
++		printf("SONGYUAN APFS: apfs_mountroot -> %d\n", err);
++		return err;
++	}
++#else
+ 	return apfs_mount_common(mp, devvp, ctx, c, v);
++#endif
+ }
