@@ -232,3 +232,4 @@
 0221-songyuan-fb-console.patch
 0222-songyuan-apfs-root-diag.patch
 0224-songyuan-exec-checkpoints.patch
+0225-songyuan-logdump.patch

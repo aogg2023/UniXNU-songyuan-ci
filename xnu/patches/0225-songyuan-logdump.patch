@@ -1,0 +1,79 @@
+--- a/bsd/dev/sweet_ufs.c
++++ b/bsd/dev/sweet_ufs.c
+@@ -374,4 +374,65 @@
+ 	pl_blocks = want;
+ 	printf("PANDORA LOG: log file in userdata: %u extents, %llu blocks\n", pl_next, pl_blocks);
+ }
++#if defined(SONGYUAN)
++/*
++ * Dump the tail of the console log the previous boot stored in the log extents
++ * (patch 0129) to the console. Called from load_init_program (kern_exec.c), which
++ * is late enough that only a few lines follow: the screen console paints the ring,
++ * so the log tail - the part the previous boot could not show - is readable on
++ * this boot without any host access to the partition.
++ */
++void
++sweet_saved_log_dump(void)
++{
++	uint8_t *bounce = (uint8_t *)(su.dma + DMA_BOUNCE);
++	uint64_t lba, run;
++	uint32_t size, want, i;
++	uint64_t total, pos;
++
++	if (pl_next == 0 || pl_blocks == 0) {
++		printf("SONGYUAN LOGDUMP: no log extents\n");
++		return;
++	}
++	if (!pl_map(0, &lba, &run) || ufs_read_blocks(lba, 1) != 0) {
++		printf("SONGYUAN LOGDUMP: header read failed\n");
++		return;
++	}
++	if (memcmp(bounce, "PANDORLG", 8) != 0) {
++		printf("SONGYUAN LOGDUMP: no PANDORLG magic\n");
++		return;
++	}
++	memcpy(&size, bounce + 12, 4);
++	memcpy(&total, bounce + 16, 8);
++	if (size < 4096 || size > (2u << 20) || total == 0) {
++		printf("SONGYUAN LOGDUMP: bad header size=%u total=%llu\n", size, total);
++		return;
++	}
++	want = 3072;                     /* about 40 lines of 2x text */
++	if (total < want) {
++		want = (uint32_t)total;
++	}
++	printf("SONGYUAN LOGDUMP: total=%llu ring=%u\n", total, size);
++	pos = total - want;
++	while (want > 0) {
++		uint32_t off = (uint32_t)(pos % size);
++		uint32_t blk = off / UFS_BLOCK;
++		uint32_t boff = off % UFS_BLOCK;
++		uint32_t n = MIN(UFS_BLOCK - boff, want);
++		if (!pl_map(1 + blk, &lba, &run) || ufs_read_blocks(lba, 1) != 0) {
++			printf("SONGYUAN LOGDUMP: read failed\n");
++			return;
++		}
++		for (i = 0; i < n; i++) {
++			char ch = (char)bounce[boff + i];
++			if (ch == '\n' || ch == '\t' || (ch >= 0x20 && ch < 0x7f)) {
++				printf("%c", ch);
++			}
++		}
++		pos += n;
++		want -= n;
++	}
++	printf("\nSONGYUAN LOGDUMP: end\n");
++}
++#endif /* SONGYUAN */
+ #endif /* PANDORA */
+--- a/bsd/kern/kern_exec.c
++++ b/bsd/kern/kern_exec.c
+@@ -6884,4 +6884,8 @@
+ 	(void) mach_vm_allocate_kernel(map, &scratch_addr, map_page_size, VM_FLAGS_ANYWHERE, VM_KERN_MEMORY_NONE);
++#if defined(SONGYUAN)
++	extern void sweet_saved_log_dump(void);
++	sweet_saved_log_dump();
++#endif
+ #if CONFIG_MEMORYSTATUS
+ 	(void) memorystatus_init_at_boot_snapshot();
+ #endif /* CONFIG_MEMORYSTATUS */
