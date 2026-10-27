@@ -20,7 +20,31 @@
  	struct mach_header *mach_header = (struct mach_header *)imgp->ip_vdata;
  	proc_t                  p = vfs_context_proc(imgp->ip_vfs_context);
  	int                     error = 0;
-@@ -7600,6 +7607,9 @@ exec_prefault_data(proc_t p __unused, struct image_params *imgp, load_result_t *load_result)
+@@ -1312,7 +1318,13 @@ exec_mach_imgact(struct image_params *imgp)
+ 	/*
+ 	 * Actually load the image file we previously decided to load.
+ 	 */
++#if defined(SONGYUAN)
++	printf("SONGYUAN EXEC: load_machfile start\n");
++#endif
+ 	lret = load_machfile(imgp, mach_header, thread, &map, &load_result);
++#if defined(SONGYUAN)
++	printf("SONGYUAN EXEC: load_machfile -> %d\n", lret);
++#endif
+ 	if (lret != LOAD_SUCCESS) {
+ 		error = load_return_to_errno(lret);
+ 
+@@ -1889,6 +1901,9 @@ exec_mach_imgact(struct image_params *imgp)
+ #endif
+ 
+ 	/* Avoid immediate VM faults back into kernel */
++#if defined(SONGYUAN)
++	printf("SONGYUAN EXEC: mach_imgact body done, prefault next\n");
++#endif
+ 	exec_prefault_data(p, imgp, &load_result);
+ 
+ 	vm_map_switch(old_map);
+@@ -7600,6 +7615,9 @@ exec_prefault_data(proc_t p __unused, struct image_params *imgp, load_result_t *load_result)
  	size_t expected_all_image_infos_size;
  	kern_return_t kr;
  
@@ -30,7 +54,7 @@
  	/*
  	 * Prefault executable or dyld entry point.
  	 */
-@@ -7611,5 +7621,8 @@ exec_prefault_data(proc_t p __unused, struct image_params *imgp, load_result_t *load_result)
+@@ -7611,5 +7629,8 @@ exec_prefault_data(proc_t p __unused, struct image_params *imgp, load_result_t *load_result)
  	    FALSE, VM_KERN_MEMORY_NONE,
  	    THREAD_UNINT, NULL, 0);
 +#if defined(SONGYUAN)
