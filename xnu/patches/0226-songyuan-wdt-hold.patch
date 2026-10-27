@@ -1,11 +1,12 @@
 --- a/osfmk/arm64/songyuan_log.c
 +++ b/osfmk/arm64/songyuan_log.c
-@@ -8,6 +8,8 @@
+@@ -8,6 +8,9 @@
   * 物理地址 = 符号 VA - __TEXT vmaddr(0xfffffff007004000) + physBase。
   */
  #include <mach/mach_types.h>
 +#include <pexpert/pexpert.h>
 +#include <kern/thread.h>
++#include <mach/clock_types.h>
  
  #define SONGYUAN_LOG_SIZE (512 * 1024)
  
@@ -61,7 +62,7 @@
 +			sweet_wdt[WDT_RST / 4] = 1;
 +		}
 +		ticks++;
-+		assert_wait_timeout(&wq, THREAD_INTERRUPTIBLE, 2000, TIMEOUT_MSEC);
++		assert_wait_timeout(&wq, THREAD_INTERRUPTIBLE, 2000, NSEC_PER_MSEC);
 +		thread_block(THREAD_CONTINUE_NULL);
 +	}
 +}
