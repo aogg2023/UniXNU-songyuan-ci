@@ -1,6 +1,6 @@
 --- a/bsd/dev/sweet_ufs.c
 +++ b/bsd/dev/sweet_ufs.c
-@@ -374,4 +374,65 @@
+@@ -374,4 +374,67 @@
  	pl_blocks = want;
  	printf("PANDORA LOG: log file in userdata: %u extents, %llu blocks\n", pl_next, pl_blocks);
  }
@@ -12,6 +12,8 @@
 + * so the log tail - the part the previous boot could not show - is readable on
 + * this boot without any host access to the partition.
 + */
++static int ufs_read_blocks(uint64_t lba, uint32_t count);
++
 +void
 +sweet_saved_log_dump(void)
 +{
