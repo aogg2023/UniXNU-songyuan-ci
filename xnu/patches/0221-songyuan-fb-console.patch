@@ -199,11 +199,18 @@
 +#endif
  	IOLog("SWEET FB: AppleCLCD %ux%u stride %u at 0x%llx, default surface %u, presented as %ux%u\n",
  	    fWidth, fHeight, fRowBytes, fPhys, fSurface->id, fLogicalW, fLogicalH);
-@@ -816,4 +822,7 @@ AppleCLCD::vsyncFired(OSObject *owner, IOTimerEventSource *sender)
+@@ -816,4 +822,14 @@ AppleCLCD::vsyncFired(OSObject *owner, IOTimerEventSource *sender)
  AppleCLCD::vsyncFired(OSObject *owner, IOTimerEventSource *sender)
  {
 +#if defined(SONGYUAN)
 +	sweet_fb_console_poll();
++	{
++		static uint32_t sweet_hb;
++		sweet_hb++;
++		if ((sweet_hb % 300) == 0) {
++			IOLog("SONGYUAN: alive %u\n", sweet_hb / 300);
++		}
++	}
 +#endif
  	AppleCLCD *fb = (AppleCLCD *)owner;
  	uint64_t now = mach_absolute_time();
