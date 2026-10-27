@@ -9,7 +9,7 @@
 + * console log into the panel through AppleCLCD's IOMemoryDescriptor mapping,
 + * which is the only writable mapping of the panel memory on this board.
 + */
-+extern "C" void sweet_fb_console_write(const char *c, int size);
++extern "C" void sweet_fb_console_poll(void);
 +extern "C" void sweet_fb_console_start(uintptr_t base, uint32_t width,
 +    uint32_t height, uint32_t stride);
 +#endif
@@ -18,7 +18,7 @@
  #endif /* _SWEET_SURFACE_H */
 --- a/iokit/Kernel/arm/SweetSurface.cpp
 +++ b/iokit/Kernel/arm/SweetSurface.cpp
-@@ -867,4 +867,164 @@ IOSurfaceRootUserClient::getTargetAndTrapForIndex(IOService **targetP, UInt32 index)
+@@ -867,4 +867,167 @@ IOSurfaceRootUserClient::getTargetAndTrapForIndex(IOService **targetP, UInt32 index)
  	*targetP = this;
  	return &sweet_surface_traps[index];
  }
@@ -30,12 +30,10 @@
 + * only writable one on this board: the ml_io_map_wcomb mapping fbcon uses returns an
 + * address that faults, which is why this kernel has never painted the phone screen.
 + * Here the console log ring is drawn straight into the panel through that working
-+ * mapping.
-+ *
-+ * Drawing happens synchronously from _cnputs (via sweet_log_append in
-+ * bsd/dev/sweet_ufs.c), not from a timer: a panic stops the AppleCLCD work loop, so
-+ * a timer-based painter would lose exactly the text that matters. AppleCLCD::start
-+ * first replays the whole ring (last 4 MiB) to show the backlog from before IOKit.
++ * mapping, so the phone shows its own boot log with no USB link, no UFS write and no
++ * fbcon. AppleCLCD::start replays the whole ring (last 4 MiB) and the vsync callback
++ * polls it from then on, so every byte of console output ends up on the screen
++ * whatever internal path (PE_printf or _cnputs) produced it.
 + *
 + * Glyphs are 16x32 (2x the 8x16 font) so the screen can be photographed from a
 + * normal distance. iso_font stores bit 0 as the leftmost pixel (see the fbcon
@@ -57,7 +55,7 @@
 +	uintptr_t base;
 +	uint32_t  width, height, stride;
 +	uint32_t  col, row, cols, rows;
-+	volatile uint64_t pos;
++	uint64_t  pos;
 +	bool      ready;
 +} sweet_con;
 +
@@ -139,15 +137,20 @@
 +	sweet_con.col++;
 +}
 +
-+/* Every console byte, from _cnputs -> sweet_log_append (bsd/dev/sweet_ufs.c). */
++/* Draw new console bytes; called from AppleCLCD::vsyncFired, 60 times a second. */
 +extern "C" void
-+sweet_fb_console_write(const char *c, int size)
++sweet_fb_console_poll(void)
 +{
-+	if (!sweet_con.ready || c == 0 || size <= 0) {
++	char buf[256];
++	uint32_t n;
++
++	if (!sweet_con.ready) {
 +		return;
 +	}
-+	for (int i = 0; i < size; i++) {
-+		sweet_con_putc(c[i]);
++	while ((n = sweet_log_copy(&sweet_con.pos, buf, sizeof(buf))) > 0) {
++		for (uint32_t i = 0; i < n; i++) {
++			sweet_con_putc(buf[i]);
++		}
 +	}
 +}
 +
@@ -174,12 +177,12 @@
 +	} else {
 +		sweet_con.pos = 0;
 +	}
-+	sweet_con.ready = true;
-+	while ((n = sweet_log_copy((uint64_t *)&sweet_con.pos, buf, sizeof(buf))) > 0) {
++	while ((n = sweet_log_copy(&sweet_con.pos, buf, sizeof(buf))) > 0) {
 +		for (uint32_t i = 0; i < n; i++) {
 +			sweet_con_putc(buf[i]);
 +		}
 +	}
++	sweet_con.ready = true;
 +}
 +#endif
  #endif /* SWEET */
@@ -196,3 +199,11 @@
 +#endif
  	IOLog("SWEET FB: AppleCLCD %ux%u stride %u at 0x%llx, default surface %u, presented as %ux%u\n",
  	    fWidth, fHeight, fRowBytes, fPhys, fSurface->id, fLogicalW, fLogicalH);
+@@ -816,4 +822,7 @@ AppleCLCD::vsyncFired(OSObject *owner, IOTimerEventSource *sender)
+ AppleCLCD::vsyncFired(OSObject *owner, IOTimerEventSource *sender)
+ {
++#if defined(SONGYUAN)
++	sweet_fb_console_poll();
++#endif
+ 	AppleCLCD *fb = (AppleCLCD *)owner;
+ 	uint64_t now = mach_absolute_time();

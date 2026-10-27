@@ -231,5 +231,4 @@
 0210-songyuan-fbcon-deferred.patch
 0221-songyuan-fb-console.patch
 0222-songyuan-apfs-root-diag.patch
-0223-songyuan-console-sync.patch
 0224-songyuan-exec-checkpoints.patch
